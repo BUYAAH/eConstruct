@@ -1,0 +1,7 @@
+Django>=6.0,<6.1
+msal
+requests
+python-dotenv
+cryptography
+pypdf
+reportlab

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Link a folder — ImagR{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h6 mb-0">Link a SharePoint folder</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:home' %}">Cancel</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div id="browser"
+             hx-get="{% url 'core:browse' %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="text-center py-5 text-body-secondary">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Loading your SharePoint sites…
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

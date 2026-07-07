@@ -1,0 +1,21 @@
+<form hx-post="{{ action }}" hx-target="#note-sheet-body" hx-swap="innerHTML">
+    {% if x %}
+    <input type="hidden" name="x" value="{{ x }}">
+    <input type="hidden" name="y" value="{{ y }}">
+    <input type="hidden" name="page" value="{{ page }}">
+    {% endif %}
+
+    {% if form.errors %}
+    <div class="alert alert-danger py-2 small">Please fill in both fields.</div>
+    {% endif %}
+
+    <div class="mb-2">
+        <label class="form-label small text-body-secondary mb-1">For</label>
+        {{ form.layer }}
+    </div>
+    <div class="mb-3">
+        <label class="form-label small text-body-secondary mb-1">Note</label>
+        {{ form.text }}
+    </div>
+    <button class="btn btn-primary w-100 py-2">Save note</button>
+</form>

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Sign-in failed — ImagR{% endblock %}
+
+{% block content %}
+<div class="card mx-auto text-center" style="max-width: 26rem;">
+    <div class="card-body py-5">
+        <div class="fs-1 mb-2">🔒</div>
+        <h1 class="h5">Sign-in failed</h1>
+        <p class="text-body-secondary">Something went wrong while signing you in with Microsoft.</p>
+        {% if error %}<p class="small text-body-secondary">{{ error }}</p>{% endif %}
+        <a class="btn btn-primary" href="{% url 'accounts:login' %}">Try again</a>
+    </div>
+</div>
+{% endblock %}

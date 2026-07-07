@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ link.display_path }} — ImagR{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h6 mb-0 text-truncate">📁 {{ link.display_path }}</h1>
+    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="{% url 'core:home' %}">&larr; Folders</a>
+</div>
+
+<div class="card">
+    <div id="items">
+        {% include "core/partials/folder_items.html" %}
+    </div>
+</div>
+{% endblock %}

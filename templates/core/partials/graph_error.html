@@ -1,0 +1,8 @@
+<div class="alert alert-warning">
+    <strong>Couldn't reach SharePoint.</strong>
+    <div class="small">{{ error.message }} (status {{ error.status_code }})</div>
+    <button class="btn btn-sm btn-outline-secondary mt-2"
+            hx-get="{% url 'core:browse' %}" hx-target="#browser" hx-swap="innerHTML">
+        Try again
+    </button>
+</div>

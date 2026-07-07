@@ -1,0 +1,20 @@
+<div class="mb-2">
+    <span class="badge" style="background-color: {{ note.layer.color }};">{{ note.layer.name }}</span>
+    <div class="small text-body-secondary mt-1">
+        {{ note.author|default:"(removed user)" }} · {{ note.created_at|date:"j M Y, H:i" }}
+    </div>
+</div>
+
+<p class="mb-3" style="white-space: pre-wrap;">{{ note.text }}</p>
+
+{% if can_edit %}
+<div class="d-flex gap-2">
+    <button class="btn btn-sm btn-outline-secondary flex-fill"
+            hx-get="{% url 'core:note_edit' note.pk %}"
+            hx-target="#note-sheet-body" hx-swap="innerHTML">Edit</button>
+    <button class="btn btn-sm btn-outline-danger flex-fill"
+            hx-post="{% url 'core:note_delete' note.pk %}"
+            hx-target="#note-sheet-body" hx-swap="innerHTML"
+            hx-confirm="Delete this note?">Delete</button>
+</div>
+{% endif %}

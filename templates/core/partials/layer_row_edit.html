@@ -1,0 +1,13 @@
+<li class="list-group-item" id="layer-{{ layer.pk }}">
+    <form hx-post="{% url 'core:layer_edit' layer.pk %}" hx-target="#layers-section" hx-swap="innerHTML"
+          class="d-flex gap-2 align-items-start flex-wrap">
+        {{ form.name }}
+        {{ form.color }}
+        {{ form.sort_order }}
+        <button class="btn btn-sm btn-primary">Save</button>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:manage' %}">Cancel</a>
+    </form>
+    {% if form.errors %}
+    <div class="small text-danger mt-1">{{ form.name.errors|join:" " }}{{ form.non_field_errors|join:" " }}</div>
+    {% endif %}
+</li>

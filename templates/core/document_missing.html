@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}File not found — ImagR{% endblock %}
+
+{% block content %}
+<div class="card mx-auto text-center" style="max-width: 26rem;">
+    <div class="card-body py-5">
+        <div class="fs-1 mb-2">🔍</div>
+        <h1 class="h5">File not found in SharePoint</h1>
+        <p class="text-body-secondary">It may have been deleted or moved out of the linked folder.</p>
+        <a class="btn btn-primary" href="{% url 'core:home' %}">Back to folders</a>
+    </div>
+</div>
+{% endblock %}

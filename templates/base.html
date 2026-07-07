@@ -1,0 +1,65 @@
+{% load static %}
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}ImagR{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/micki.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+<nav class="navbar navbar-expand navbar-micki sticky-top">
+    <div class="container" style="max-width: 960px;">
+        <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="/">
+            <span class="brand-dot"></span>ImagR
+        </a>
+        {% if user.is_authenticated %}
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            {% if user.is_company_admin %}
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:manage' %}">Manage</a>
+            {% endif %}
+            <div class="dropdown">
+                <button class="btn p-0 border-0 avatar" data-bs-toggle="dropdown" aria-label="Account menu">
+                    {% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li class="dropdown-item-text">
+                        <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
+                        <div class="small text-body-secondary">{{ user.email }}</div>
+                        <div class="small text-body-secondary">{{ user.company.name }}</div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{% url 'accounts:logout' %}">
+                            {% csrf_token %}
+                            <button class="dropdown-item">Log out</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</nav>
+
+<main class="container py-3 py-md-4" style="max-width: 960px;">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

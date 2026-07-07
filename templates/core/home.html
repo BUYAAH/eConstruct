@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Folders — ImagR{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        Linked folders
+        {% if user.is_company_admin %}
+        <a class="btn btn-sm btn-primary" href="{% url 'core:folder_picker' %}">+ Link folder</a>
+        {% endif %}
+    </div>
+
+    {% if folder_links %}
+    <ul class="list-group list-group-flush">
+        {% for link in folder_links %}
+        <li class="list-group-item d-flex align-items-center gap-3 p-0">
+            <a class="flex-grow-1 d-flex align-items-center gap-3 text-decoration-none text-body py-3 ps-3"
+               href="{% url 'core:folder_detail' link.pk %}">
+                <span class="icon-square bg-primary-subtle">📁</span>
+                <span class="flex-grow-1">
+                    {{ link.display_path }}
+                    <span class="d-block small text-body-secondary">SharePoint</span>
+                </span>
+                <span class="text-body-secondary pe-2">&rsaquo;</span>
+            </a>
+            {% if user.is_company_admin %}
+            <form method="post" action="{% url 'core:unlink_folder' link.pk %}" class="pe-3"
+                  onsubmit="return confirm('Unlink this folder? Notes are kept.');">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger">Unlink</button>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="card-body text-center py-5 text-body-secondary">
+        <div class="fs-1 mb-2">📂</div>
+        <p class="mb-1 fw-semibold text-body">No folders linked yet</p>
+        {% if user.is_company_admin %}
+        <p class="mb-0">Link a SharePoint folder to get started.</p>
+        {% else %}
+        <p class="mb-0">Ask your admin to link a SharePoint folder.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
