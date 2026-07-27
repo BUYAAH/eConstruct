@@ -13,6 +13,10 @@
                 {{ note.author|default:"(removed user)" }} · {{ note.created_at|date:"j M, H:i" }}
             </div>
         </div>
+        {% if note.photo %}
+        <img src="{% url 'core:note_photo' note.pk %}" alt=""
+             class="rounded align-self-center" style="width: 44px; height: 44px; object-fit: cover;">
+        {% endif %}
         <span class="text-body-secondary align-self-center">&rsaquo;</span>
     </li>
     {% empty %}

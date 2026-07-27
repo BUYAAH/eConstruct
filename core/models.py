@@ -102,6 +102,8 @@ class Note(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="notes"
     )
     text = models.TextField()
+    # Optional photo; uploads are downscaled and re-encoded to JPEG on save.
+    photo = models.ImageField(upload_to="note_photos/%Y/%m/", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,4 +1,5 @@
-<form hx-post="{{ action }}" hx-target="#note-sheet-body" hx-swap="innerHTML">
+<form hx-post="{{ action }}" hx-target="#note-sheet-body" hx-swap="innerHTML"
+      hx-encoding="multipart/form-data">
     {% if x %}
     <input type="hidden" name="x" value="{{ x }}">
     <input type="hidden" name="y" value="{{ y }}">
@@ -13,9 +14,13 @@
         <label class="form-label small text-body-secondary mb-1">For</label>
         {{ form.layer }}
     </div>
-    <div class="mb-3">
+    <div class="mb-2">
         <label class="form-label small text-body-secondary mb-1">Note</label>
         {{ form.text }}
+    </div>
+    <div class="mb-3">
+        <label class="form-label small text-body-secondary mb-1">Photo (optional)</label>
+        {{ form.photo }}
     </div>
     <button class="btn btn-primary w-100 py-2">Save note</button>
 </form>

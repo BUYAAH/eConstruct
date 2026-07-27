@@ -7,6 +7,13 @@
 
 <p class="mb-3" style="white-space: pre-wrap;">{{ note.text }}</p>
 
+{% if note.photo %}
+<a href="{% url 'core:note_photo' note.pk %}" target="_blank" rel="noopener">
+    <img src="{% url 'core:note_photo' note.pk %}" alt="Note photo"
+         class="img-fluid rounded mb-3 d-block" style="max-height: 40vh;">
+</a>
+{% endif %}
+
 {% if can_edit %}
 <div class="d-flex gap-2">
     <button class="btn btn-sm btn-outline-secondary flex-fill"

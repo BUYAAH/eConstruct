@@ -25,12 +25,13 @@ class LayerForm(forms.ModelForm):
 class NoteForm(forms.ModelForm):
     class Meta:
         model = Note
-        fields = ["layer", "text"]
+        fields = ["layer", "text", "photo"]
         widgets = {
             "layer": forms.Select(attrs={"class": "form-select"}),
             "text": forms.Textarea(
                 attrs={"class": "form-control", "rows": 3, "placeholder": "Write your note…"}
             ),
+            "photo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
         }
 
     def __init__(self, company, *args, **kwargs):

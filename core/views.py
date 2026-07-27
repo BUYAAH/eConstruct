@@ -6,11 +6,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 import json
+import uuid
 
 from django.contrib.auth import get_user_model
+from django.http import FileResponse
 
 from . import graph
 from .forms import LayerForm, NoteForm
+from .images import process_upload
 from .models import Document, FolderLink, Layer, Note
 from .pdf_export import stamp_notes
 
@@ -270,11 +273,17 @@ def notes_list(request, pk):
     return render(request, "core/partials/notes_list.html", {"notes": notes})
 
 
+def _attach_photo(note, request):
+    """Replace the note's photo with a downscaled JPEG when a new file arrived."""
+    if request.FILES.get("photo"):
+        note.photo.save(f"{uuid.uuid4().hex}.jpg", process_upload(request.FILES["photo"]), save=False)
+
+
 @login_required
 def note_new(request, pk):
     document = get_object_or_404(Document, pk=pk, company=request.user.company)
     if request.method == "POST":
-        form = NoteForm(request.user.company, request.POST)
+        form = NoteForm(request.user.company, request.POST, request.FILES)
         if form.is_valid():
             note = form.save(commit=False)
             note.document = document
@@ -282,6 +291,7 @@ def note_new(request, pk):
             note.x_pct = request.POST["x"]
             note.y_pct = request.POST["y"]
             note.author = request.user
+            _attach_photo(note, request)
             note.save()
             return _close_and_refresh(render(request, "core/partials/note_saved.html"))
     else:
@@ -314,13 +324,23 @@ def note_edit(request, pk):
     if not _can_edit(request.user, note):
         return HttpResponseForbidden()
     if request.method == "POST":
-        form = NoteForm(request.user.company, request.POST, instance=note)
+        form = NoteForm(request.user.company, request.POST, request.FILES, instance=note)
         if form.is_valid():
-            form.save()
+            note = form.save(commit=False)
+            _attach_photo(note, request)
+            note.save()
             return _close_and_refresh(render(request, "core/partials/note_saved.html"))
     else:
         form = NoteForm(request.user.company, instance=note)
     return render(request, "core/partials/note_form.html", {"form": form, "action": request.path})
+
+
+@login_required
+def note_photo(request, pk):
+    note = get_object_or_404(Note, pk=pk, document__company=request.user.company)
+    if not note.photo:
+        raise Http404
+    return FileResponse(note.photo.open("rb"), content_type="image/jpeg")
 
 
 @login_required

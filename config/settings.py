@@ -26,6 +26,9 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h]
 
+# Needed for POSTs when serving through an https tunnel or in production
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+
 
 # Application definition
 
@@ -121,6 +124,9 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Note photos live here; served only through the login-protected note_photo view.
+MEDIA_ROOT = BASE_DIR / 'media'
 
 AUTH_USER_MODEL = "accounts.User"
 
