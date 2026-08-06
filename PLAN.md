@@ -1,5 +1,13 @@
 # Micki — Implementation Plan & Handover
 
+> **⚠️ Superseded for forward-looking work as of 2026-08-06. Read
+> `ROADMAP.md` first.** Two decisions invalidated large parts of this file:
+> the Microsoft tenant is retired (no SharePoint, no SSO), and the pitch is
+> no longer the near-term goal — this is now a real product build.
+> Everything below stays as the historical record: it explains *why* the
+> code looks the way it does, and the "Gotchas already identified" section
+> is still live. Do not follow its future-tense steps.
+
 Companion to `SPEC.md` (read that first — it holds the *what* and every
 agreed decision). This file holds the *how*: concrete steps, code-level
 guidance, and current status, so any developer or AI session can continue
@@ -42,9 +50,11 @@ without re-deriving context.
       **NOT tested end-to-end** — blocked on Azure app registration
       (Martin's browser task, see Step 2 "Azure side"). `.env` has
       empty MS_CLIENT_ID / MS_CLIENT_SECRET.
-- [x] Azure done (2026-07-07, live session with Martin): dev tenant
-      **Buyaah.onmicrosoft.com** (Business Basic trial — expires ~2026-08-07,
-      renew/replace before pitch if later!), admin
+- [x] Azure done (2026-07-07, live session with Martin) — **RETIRED
+      2026-08-06, see the "Microsoft tenant retired" entry below; treat the
+      credentials here as historical record, not live config**: dev tenant
+      **Buyaah.onmicrosoft.com** (Business Basic trial — expires ~2026-08-07),
+      admin
       MartinRahbek@Buyaah.onmicrosoft.com, multi-tenant app registration
       client id 6ee95d97-b92c-420f-9b3b-746bc49487de, delegated
       User.Read/Files.Read.All/Sites.Read.All with admin consent, secret in
@@ -125,7 +135,55 @@ without re-deriving context.
       so weight 600 snapped to full bold and read "fat" — vendored variable
       fonts fix that; and every component weight was stepped down one notch
       (nav 500→400, card headers 600→500).
+- [x] Project detail page built (2026-07-27, after the entry above was
+      written): `templates/core/project_detail.html` is a three-panel
+      working layout — a left card with the project's sub-nav
+      (Oversigt/Tegninger/Dokumenter/Registreringer as inert `<button>`s,
+      each with a count) over a `<dl>` of reference metadata; a main column
+      holding an inline PDF.js drawing preview and a Registreringer table
+      (emne + location, faggruppe, author→assignee, dato, deadline, status
+      badge with an `overdue` variant). Data is `_demo_registrations()` in
+      `core.views` — same pattern as the Projekter cards, so a real model
+      is a view-only swap. The preview is driven by the new
+      `static/js/pdf-preview.js`, a small `data-pdf-preview` component
+      (separate from `viewer.js`, which stays the full pin-note viewer);
+      it currently points at a hardcoded `static/img/3 - 1. ETAGE.pdf`.
+- [x] `storage_plan.md` written (2026-07-27): exploratory — **not an
+      agreed spec** — costing for self-hosting Registreringer photos
+      (Pillow → thumb/medium/original → S3, presigned URLs, no queue
+      needed). Conclusion: ~$1.50–2.50 per project all-in, egress is ~85%
+      of it, so cost is not a reason to avoid the feature. Ends with three
+      open questions for Martin (retention, CloudFront day one, which AWS
+      account).
+- [x] All of the above committed 2026-08-06 as `e685bd4` (WIP commit —
+      the work had been sitting uncommitted since 2026-07-27).
+- [ ] **Microsoft tenant retired (decided 2026-08-06).** Martin is not
+      proceeding with the Buyaah trial tenant; it is being cancelled before
+      the Business Basic trial converts to paid. Consequences to plan
+      around, *not yet actioned in code*:
+      - Cancelling the *subscription* is not the same as deleting the
+        *tenant*. The Entra ID directory (Buyaah.onmicrosoft.com) and the
+        app registration `6ee95d97-b92c-420f-9b3b-746bc49487de` sit on
+        Entra ID Free and normally survive; what goes away with the
+        licences is **SharePoint/OneDrive/Exchange** — i.e. the
+        Documentation site and its PDFs — after the retention window.
+        So Microsoft *login* may keep working while Graph *file* access
+        does not. Don't assume either way without re-testing.
+      - Nothing in the Graph path (`accounts/microsoft.py`, `core/graph.py`,
+        `core/pdf_export.py`, the folder picker, `document_pdf`) is
+        deleted — it all still works against *some* tenant. It is simply
+        unexercisable until a tenant exists again.
+      - Login is Microsoft-only, so with no tenant **there is no way into
+        the app** except `createsuperuser` + Django admin. Whatever comes
+        next has to answer this first (see "Next up" below).
 - [ ] Step 7–8 (mobile polish pass, realistic demo data, deploy).
+
+## Next up (open — being planned 2026-08-06)
+
+With the tenant gone, the pitch demo can no longer lean on real SharePoint.
+The direction has to be agreed with Martin before building; the shape of the
+decision is "what replaces Microsoft as the way in and the source of files",
+and it gates everything in Step 7–8.
 
 ## Step 0 — Housekeeping (30 min)
 

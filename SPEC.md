@@ -4,6 +4,12 @@ B2B SaaS: companies connect their SharePoint, users open PDFs from it on
 phone/tablet, drop pin-notes on the page, and target each note at an
 audience "layer" (e.g. Sales, Technicians).
 
+> **⚠️ Superseded 2026-08-06 — read `ROADMAP.md` first.** The Microsoft
+> tenant is retired, so the Login and SharePoint rows below no longer
+> describe where the product is going, and the pitch-MVP framing ("bias
+> toward shipping the demo") no longer applies. Kept as the decision log
+> that explains the existing code; `ROADMAP.md` holds the current plan.
+
 **Status of this document:** agreed spec for v0.1, 2026-07-07. The MVP is a
 pitch vehicle for one target company; expect a partial rebuild after their
 feedback, so bias every decision toward *shipping the demo*, not toward

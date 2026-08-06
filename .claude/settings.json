@@ -50,7 +50,8 @@
       "Bash(curl -s http://127.0.0.1:8000/static/css/fonts.css)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}  %{content_type}  %{size_download} bytes\\\\n\" \"http://127.0.0.1:8000/static/img/3%20-%201.%20ETAGE.pdf\")",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python -c ' *)"
     ]
   }
 }
