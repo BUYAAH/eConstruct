@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ registration.label }} {{ registration.subject }} — {{ brand }}{% endblock %}
+
+{% block topbar_title %}
+<nav aria-label="Brødkrumme" class="min-width-0">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:projects' %}">Projekter</a></li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'core:project_detail' registration.project.slug %}">
+                {{ registration.project.name }}
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">{{ registration.label }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="reg-dot" style="--dot: {{ registration.discipline.color }};"></span>
+                <span class="flex-grow-1 text-truncate">
+                    {{ registration.label }} {{ registration.subject }}
+                </span>
+                {% include "core/partials/status_badge.html" with r=registration %}
+            </div>
+            <div class="card-body">
+                {% if registration.description %}
+                <p style="white-space: pre-wrap;">{{ registration.description }}</p>
+                {% else %}
+                <p class="text-body-secondary small mb-0">Ingen uddybende beskrivelse.</p>
+                {% endif %}
+            </div>
+
+            <div class="card-header">Fotos</div>
+            <div class="card-body" id="registration-photos">
+                {% include "core/partials/registration_photos.html" %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4 d-flex flex-column gap-3">
+        <div class="card">
+            <div class="card-header">Status</div>
+            <div class="card-body" id="registration-status">
+                {% include "core/partials/registration_status.html" %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Detaljer</div>
+            <dl class="project-meta">
+                <dt>Faggruppe</dt>
+                <dd>{{ registration.discipline.name }}</dd>
+                <dt>Firma</dt>
+                <dd>
+                    {{ registration.assigned_contractor.name }}
+                    {% if registration.assigned_contractor.contact_email %}
+                    <div class="small text-body-secondary">
+                        {{ registration.assigned_contractor.contact_email }}
+                    </div>
+                    {% endif %}
+                </dd>
+                <dt>Ansvarlig</dt>
+                <dd>{{ registration.responsible|default:"—" }}</dd>
+                <dt>Frist</dt>
+                <dd>
+                    {% if registration.deadline %}
+                    <span {% if registration.overdue %}class="text-danger fw-medium"{% endif %}>
+                        {{ registration.deadline|date:"j. F Y" }}
+                    </span>
+                    {% else %}—{% endif %}
+                </dd>
+                <dt>Placering</dt>
+                <dd>
+                    {% if registration.drawing %}
+                    <a href="{% url 'core:viewer' registration.drawing.pk %}">
+                        {{ registration.drawing.name }}
+                    </a>
+                    · s. {{ registration.page_number }}
+                    {% else %}
+                    Ikke knyttet til en tegning
+                    {% endif %}
+                </dd>
+                <dt>Oprettet af</dt>
+                <dd>
+                    {{ registration.author|default:"(slettet bruger)" }}
+                    <div class="small text-body-secondary">
+                        {{ registration.created_at|date:"j. F Y, H:i" }}
+                    </div>
+                </dd>
+            </dl>
+            {% if can_edit %}
+            <div class="card-footer d-flex gap-2">
+                <a class="btn btn-sm btn-outline-secondary flex-fill"
+                   href="{% url 'core:registration_edit' registration.pk %}">Redigér</a>
+                <form method="post" action="{% url 'core:registration_delete' registration.pk %}"
+                      class="flex-fill">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-danger w-100"
+                            onclick="return confirm('Slet {{ registration.label }}?')">Slet</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

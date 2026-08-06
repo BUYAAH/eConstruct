@@ -1,0 +1,39 @@
+<ul class="list-group list-group-flush mb-3">
+    {% for contractor in contractors %}
+    <li class="list-group-item d-flex align-items-center gap-2 px-0">
+        <div class="flex-grow-1 min-width-0">
+            <div class="text-truncate">{{ contractor.name }}</div>
+            <div class="small text-body-secondary text-truncate">
+                {{ contractor.contact_name }}{% if contractor.contact_name and contractor.contact_email %} · {% endif %}{{ contractor.contact_email }}
+            </div>
+        </div>
+        {% if contractor.registrations.exists %}
+        <span class="small text-body-secondary flex-shrink-0">
+            {{ contractor.registrations.count }} reg.
+        </span>
+        {% else %}
+        <button class="btn btn-sm btn-outline-danger flex-shrink-0"
+                hx-post="{% url 'core:contractor_delete' contractor.pk %}"
+                hx-target="#contractors-section" hx-swap="innerHTML"
+                hx-confirm="Slet {{ contractor.name }}?">Slet</button>
+        {% endif %}
+    </li>
+    {% empty %}
+    <li class="list-group-item text-body-secondary small px-0">
+        Ingen firmaer endnu — de skal oprettes her, før de kan tilknyttes et projekt.
+    </li>
+    {% endfor %}
+</ul>
+
+<form hx-post="{% url 'core:contractor_create' %}" hx-target="#contractors-section" hx-swap="innerHTML">
+    {% for field in contractor_form %}
+    <div class="mb-2">
+        <label class="form-label small mb-1" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+        <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    <button class="btn btn-sm btn-primary">Tilføj firma</button>
+</form>

@@ -1,8 +1,0 @@
-{% comment %}
-Kept as a slot for export errors. The export itself is now a plain file
-download rather than a SharePoint upload, so the success case has nothing
-to report back into the page.
-{% endcomment %}
-{% if error %}
-<div class="alert alert-warning py-2 small mb-2">Eksport mislykkedes: {{ error }}</div>
-{% endif %}

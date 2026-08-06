@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Oversigt — {{ brand }}{% endblock %}
+{% block page_title %}Oversigt{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+    {% comment %}
+    Four counts, not a chart. The question someone opens this page with is
+    "what needs my attention", and overdue is the only alarming number here —
+    so it's the only one that gets a colour.
+    {% endcomment %}
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ overdue_count }}</div>
+                <div class="stat-label {% if overdue_count %}text-danger{% endif %}">Overskredet</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ open_count }}</div>
+                <div class="stat-label">Åbne registreringer</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ resolved_count }}</div>
+                <div class="stat-label">Afventer godkendelse</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ project_count }}</div>
+                <div class="stat-label">Aktive projekter</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center">
+        <span class="flex-grow-1">Seneste registreringer</span>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:registrations' %}">Se alle</a>
+    </div>
+    {% include "core/partials/registration_rows.html" with registrations=recent show_project=True %}
+</div>
+{% endblock %}

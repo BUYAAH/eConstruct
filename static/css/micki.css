@@ -243,6 +243,18 @@ body {
     border: 2px solid #fff;
     box-shadow: 0 1px 5px rgba(0, 0, 0, .45);
     padding: 0;
+    /* The pin carries its registration number — it's how people refer to
+       one on site, and it matches the numbered dots in the exported PDF. */
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Dealt with, but still worth seeing in context — dimmed rather than hidden,
+   so an approved item doesn't look like it was never raised. */
+.pin.pin-resolved {
+    opacity: .45;
 }
 
 /* invisible halo so the touch target is ~44px */
@@ -513,4 +525,52 @@ a.project-card:focus-visible {
 
 .auth-card .brand-dot {
     flex-shrink: 0;
+}
+
+/* --- Overview stat tiles ------------------------------------------------ */
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: .8125rem;
+    color: var(--app-muted);
+}
+
+/* --- Registration photos ------------------------------------------------ */
+
+.reg-photo {
+    position: relative;
+}
+
+.reg-photo img {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    display: block;
+}
+
+/* Sits on the corner of the thumbnail rather than below it, so a row of
+   photos stays a row of photos. */
+.reg-photo-delete {
+    position: absolute;
+    top: -.4rem;
+    right: -.4rem;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    line-height: 1;
+    background: var(--bs-body-bg);
+}
+
+/* --- Registration table rows ------------------------------------------- */
+
+/* Rows are navigable via the link in the subject cell; the pointer cursor
+   signals that the whole row responds in the viewer. */
+.reg-table .reg-row {
+    cursor: pointer;
 }

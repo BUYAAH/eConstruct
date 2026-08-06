@@ -1,11 +1,11 @@
 import json
 import re
 import uuid
-from datetime import timedelta
 from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -15,10 +15,15 @@ from accounts.emails import send_invitation
 from accounts.forms import InvitationForm
 from accounts.models import Invitation
 
-from .forms import DisciplineForm, DrawingUploadForm, NoteForm
-from .images import process_upload
-from .models import Discipline, Drawing, Note
-from .pdf_export import stamp_notes
+from .forms import (
+    ContractorForm, DisciplineForm, DrawingUploadForm, PhotoUploadForm,
+    ProjectForm, RegistrationForm,
+)
+from .images import process_photo
+from .models import (
+    Contractor, Discipline, Drawing, Project, Registration, RegistrationPhoto,
+)
+from .pdf_export import stamp_registrations
 
 
 def org_admin_required(view):
@@ -32,215 +37,130 @@ def org_admin_required(view):
     return wrapper
 
 
-# Every organization-owned queryset below goes through one of these, so the
-# tenant filter is never something an individual view has to remember.
-# Organizations are 100% separated (ROADMAP.md D6) — a missing filter here is
-# a cross-tenant leak, not a cosmetic bug.
+# --- Scoping -----------------------------------------------------------------
+#
+# Everything organization-owned is reached through these. Organizations are
+# 100% separated (ROADMAP.md D6) and project access is by explicit membership
+# (D9), so a view that builds its own queryset is a bug waiting to leak data.
+# Object lookups filter in the same query rather than fetching then checking.
+
+
+def _projects(request):
+    """Projects the user may see: their own, or all of them for an org admin."""
+    user = request.user
+    qs = Project.objects.filter(organization=user.organization)
+    if not user.is_org_admin:
+        qs = qs.filter(members=user)
+    return qs
+
+
+def _get_project(request, slug):
+    return get_object_or_404(_projects(request), slug=slug)
+
+
 def _drawings(request):
-    return Drawing.objects.filter(organization=request.user.organization)
+    return Drawing.objects.filter(project__in=_projects(request))
 
 
-def _notes(request):
-    return Note.objects.filter(drawing__organization=request.user.organization)
+def _registrations(request):
+    return Registration.objects.filter(project__in=_projects(request))
+
+
+# --- Overview ----------------------------------------------------------------
 
 
 @login_required
 def overview(request):
-    """Landing page. Gets KPI tiles + recent activity in phase 5."""
-    return render(request, "core/placeholder.html", {"heading": "Oversigt", "icon": "i-overview"})
+    today = timezone.localdate()
+    registrations = _registrations(request)
+    open_qs = registrations.exclude(status=Registration.APPROVED)
 
-
-@login_required
-def registrations(request):
     return render(
-        request, "core/placeholder.html", {"heading": "Registreringer", "icon": "i-registrations"}
+        request,
+        "core/overview.html",
+        {
+            "project_count": _projects(request).filter(status=Project.ACTIVE).count(),
+            "open_count": registrations.filter(status=Registration.OPEN).count(),
+            "resolved_count": registrations.filter(status=Registration.RESOLVED).count(),
+            "overdue_count": open_qs.filter(deadline__lt=today).count(),
+            "recent": registrations.select_related(
+                "project", "discipline", "assigned_contractor", "author"
+            )[:8],
+        },
     )
 
 
-@login_required
-def reports(request):
-    return render(request, "core/placeholder.html", {"heading": "Rapporter", "icon": "i-reports"})
-
-
-# Stand-in for the Project model that doesn't exist yet, so we can agree on
-# the Projekter layout before building it. `updated` is relative to now so the
-# demo never goes stale. Templates read only from these dicts — wiring a real
-# queryset in phase 2 should be a view-only change.
-_DEMO_PROJECTS = [
-    {
-        "slug": "sygehus-nord",
-        "name": "Sygehus Nord",
-        "case_no": "2024-0417",
-        "address": "Hobrovej 18, 9000 Aalborg",
-        "status": "Aktiv",
-        "status_class": "success",
-        "drawings": 34,
-        "documents": 18,
-        "registrations": 23,
-        "reports": 12,
-        "companies": 4,
-        "open_registrations": 7,
-        "manager": "Lene Bak",
-        "progress": 62,
-        "updated_delta": timedelta(hours=3),
-    },
-    {
-        "slug": "hasserisvej-31",
-        "name": "Hasserisvej 31",
-        "case_no": "2024-0392",
-        "address": "Hasserisvej 31, 9000 Aalborg",
-        "status": "Aktiv",
-        "status_class": "success",
-        "drawings": 9,
-        "documents": 6,
-        "registrations": 11,
-        "reports": 5,
-        "companies": 2,
-        "open_registrations": 1,
-        "manager": "Jonas Overgaard",
-        "progress": 88,
-        "updated_delta": timedelta(days=2),
-    },
-    {
-        "slug": "vester-hassing-skole",
-        "name": "Vester Hassing Skole",
-        "case_no": "2023-1184",
-        "address": "Halvvejen 5, 9310 Vodskov",
-        "status": "Afsluttet",
-        "status_class": "secondary",
-        "drawings": 41,
-        "documents": 27,
-        "registrations": 56,
-        "reports": 21,
-        "companies": 5,
-        "open_registrations": 0,
-        "manager": "Mette Kjær",
-        "progress": 100,
-        "updated_delta": timedelta(days=34),
-    },
-]
-
-
-def _demo_projects():
-    now = timezone.now()
-    return [{**p, "updated": now - p["updated_delta"]} for p in _DEMO_PROJECTS]
-
-
-# Shaped after the real Note rows (discipline + author + page + optional
-# photo) with construction-realistic content. Becomes a Registration queryset
-# in phase 4.
-_DEMO_REGISTRATIONS = [
-    {
-        "text": "Revne i betonvæg ved akse D/4",
-        "category": "Konstruktion",
-        "color": "#dc3545",
-        "open": True,
-        "location": "3 - 1. etage · s. 1",
-        "assignee": "Jonas Overgaard",
-        "deadline_delta": timedelta(days=5),
-        "author": "Lene Bak",
-        "photo": True,
-        "created_delta": timedelta(hours=2),
-    },
-    {
-        "text": "Manglende brandtætning omkring rørgennemføring",
-        "category": "Brand",
-        "color": "#fd7e14",
-        "open": True,
-        "location": "3 - 1. etage · s. 1",
-        "assignee": "Søren Dahl",
-        "deadline_delta": timedelta(days=-1),
-        "author": "Jonas Overgaard",
-        "photo": True,
-        "created_delta": timedelta(hours=6),
-    },
-    {
-        "text": "El-dåse placeret forkert ift. tegning",
-        "category": "El",
-        "color": "#0d6efd",
-        "open": True,
-        "location": "3 - 1. etage · s. 2",
-        "assignee": "",
-        "deadline_delta": None,
-        "author": "Søren Dahl",
-        "photo": False,
-        "created_delta": timedelta(days=1),
-    },
-    {
-        "text": "Vandskade i loft ved teknikrum",
-        "category": "VVS",
-        "color": "#0dcaf0",
-        "open": True,
-        "location": "3 - 1. etage · s. 3",
-        "assignee": "Anders Precht",
-        "deadline_delta": timedelta(days=1),
-        "author": "Mette Kjær",
-        "photo": True,
-        "created_delta": timedelta(days=2),
-    },
-    {
-        "text": "Loftshøjde målt til 2,80 m mod 3,00 m projekteret",
-        "category": "Konstruktion",
-        "color": "#dc3545",
-        "open": False,
-        "location": "3 - 1. etage · s. 2",
-        "assignee": "Mette Kjær",
-        "deadline_delta": timedelta(days=-3),
-        "author": "Lene Bak",
-        "photo": False,
-        "created_delta": timedelta(days=5),
-    },
-    {
-        "text": "Manglende isolering i ydervæg mod nord",
-        "category": "Kvalitet",
-        "color": "#198754",
-        "open": False,
-        "location": "3 - 1. etage · s. 4",
-        "assignee": "",
-        "deadline_delta": None,
-        "author": "Anders Precht",
-        "photo": True,
-        "created_delta": timedelta(days=9),
-    },
-]
-
-
-def _demo_registrations():
-    """Materialise the relative deltas. `overdue` is computed here rather than
-    in the template — Django templates can't compare datetimes."""
-    now = timezone.now()
-    out = []
-    for r in _DEMO_REGISTRATIONS:
-        deadline = now + r["deadline_delta"] if r["deadline_delta"] is not None else None
-        out.append({
-            **r,
-            "created": now - r["created_delta"],
-            "deadline": deadline,
-            "overdue": bool(deadline and r["open"] and deadline < now),
-        })
-    return out
+# --- Projects ----------------------------------------------------------------
 
 
 @login_required
 def projects(request):
-    """Target layout for the coming project concept (demo data — see above)."""
-    return render(request, "core/projects.html", {"projects": _demo_projects()})
+    qs = _projects(request).select_related("manager").annotate(
+        drawing_count=Count("drawings", distinct=True),
+        registration_count=Count("registrations", distinct=True),
+        open_count=Count(
+            "registrations",
+            filter=Q(registrations__status=Registration.OPEN),
+            distinct=True,
+        ),
+        contractor_count=Count("contractors", distinct=True),
+    )
+    return render(request, "core/projects.html", {"projects": qs})
+
+
+@org_admin_required
+def project_create(request):
+    org = request.user.organization
+    if request.method == "POST":
+        form = ProjectForm(org, request.POST)
+        if form.is_valid():
+            project = form.save(commit=False)
+            project.organization = org
+            project.save()
+            form.save_m2m()
+            # The creator is always a member, or an admin can lock themselves
+            # out of a project they just made.
+            project.members.add(request.user)
+            return redirect("core:project_detail", slug=project.slug)
+    else:
+        form = ProjectForm(org, initial={"manager": request.user})
+    return render(request, "core/project_form.html", {"form": form, "heading": "Nyt projekt"})
+
+
+@org_admin_required
+def project_edit(request, slug):
+    project = _get_project(request, slug)
+    org = request.user.organization
+    if request.method == "POST":
+        form = ProjectForm(org, request.POST, instance=project)
+        if form.is_valid():
+            form.save()
+            return redirect("core:project_detail", slug=project.slug)
+    else:
+        form = ProjectForm(org, instance=project)
+    return render(
+        request,
+        "core/project_form.html",
+        {"form": form, "heading": f"Redigér {project.name}", "project": project},
+    )
 
 
 @login_required
 def project_detail(request, slug):
-    project = next((p for p in _demo_projects() if p["slug"] == slug), None)
-    if project is None:
-        raise Http404("Ukendt projekt")
+    project = _get_project(request, slug)
+    registrations = project.registrations.select_related(
+        "discipline", "assigned_contractor", "responsible", "author", "drawing"
+    ).prefetch_related("photos")
+
     return render(
         request,
         "core/project_detail.html",
         {
             "project": project,
-            "registrations": _demo_registrations(),
-            # The inline preview shows a real uploaded drawing when there is
-            # one; the template falls back to an empty state otherwise.
-            "preview_drawing": _drawings(request).first(),
+            "registrations": registrations,
+            "drawings": project.drawings.all(),
+            "open_count": registrations.filter(status=Registration.OPEN).count(),
+            "preview_drawing": project.drawings.first(),
         },
     )
 
@@ -248,28 +168,24 @@ def project_detail(request, slug):
 # --- Drawings ----------------------------------------------------------------
 
 
-@login_required
-def drawings(request):
-    return render(request, "core/drawings.html", {"drawings": _drawings(request)})
-
-
 @org_admin_required
-def drawing_upload(request):
+def drawing_upload(request, slug):
+    project = _get_project(request, slug)
     if request.method == "POST":
         form = DrawingUploadForm(request.POST, request.FILES)
         if form.is_valid():
             drawing = form.save(commit=False)
-            drawing.organization = request.user.organization
+            drawing.project = project
             drawing.uploaded_by = request.user
             if not drawing.name:
                 drawing.name = request.FILES["file"].name.rsplit(".", 1)[0]
             drawing.save()
             drawing.page_count = _count_pages(drawing)
             drawing.save(update_fields=["page_count"])
-            return redirect("core:drawings")
+            return redirect("core:project_detail", slug=project.slug)
     else:
         form = DrawingUploadForm()
-    return render(request, "core/drawing_upload.html", {"form": form})
+    return render(request, "core/drawing_upload.html", {"form": form, "project": project})
 
 
 def _count_pages(drawing):
@@ -280,8 +196,8 @@ def _count_pages(drawing):
         with drawing.file.open("rb") as fh:
             return len(PdfReader(fh).pages)
     except Exception:
-        # A file PdfReader can't parse still uploads; the viewer will show the
-        # error. Better than losing the upload over a page count.
+        # A file pypdf can't parse still uploads; the viewer surfaces the
+        # problem. Better than losing the upload over a page count.
         return 0
 
 
@@ -289,18 +205,23 @@ def _count_pages(drawing):
 @require_POST
 def drawing_delete(request, pk):
     drawing = get_object_or_404(_drawings(request), pk=pk)
+    slug = drawing.project.slug
     drawing.file.delete(save=False)
     drawing.delete()
-    return redirect("core:drawings")
+    return redirect("core:project_detail", slug=slug)
 
 
 @login_required
 def viewer(request, pk):
-    drawing = get_object_or_404(_drawings(request), pk=pk)
+    drawing = get_object_or_404(_drawings(request).select_related("project"), pk=pk)
     return render(
         request,
         "core/viewer.html",
-        {"drawing": drawing, "disciplines": request.user.organization.disciplines.all()},
+        {
+            "drawing": drawing,
+            "project": drawing.project,
+            "disciplines": request.user.organization.disciplines.all(),
+        },
     )
 
 
@@ -309,10 +230,10 @@ _RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 
 @login_required
 def drawing_pdf(request, pk):
-    """Serve the PDF bytes, login- and organization-checked.
+    """Serve the PDF bytes, login- and access-checked.
 
     Range support is implemented by hand: Django 6.0's FileResponse doesn't
-    do it, and PDF.js relies on it to fetch large CAD drawings in chunks
+    do it, and PDF.js relies on it to fetch a large CAD drawing in chunks
     rather than downloading the whole file before showing page 1 — which
     matters on a phone, the primary device.
     """
@@ -359,37 +280,312 @@ EXPORT_MODES = {"summary": "kommenteret", "inline": "noter i tekst"}
 
 @login_required
 def export_drawing(request, pk, mode):
-    """Stamp all notes into the PDF and hand it back as a download.
+    """Stamp this drawing's registrations into the PDF and hand it back.
 
-    Pre-pivot this uploaded the result back into SharePoint; the stamping
-    itself (including the CAD non-zero-origin page fix) is unchanged.
-    """
+    This is what a contractor without a login receives (D7)."""
     if mode not in EXPORT_MODES:
         raise Http404
     drawing = get_object_or_404(_drawings(request), pk=pk)
-    notes = drawing.notes.select_related("discipline", "author").all()
+    registrations = drawing.registrations.select_related(
+        "discipline", "author", "assigned_contractor"
+    ).filter(x_pct__isnull=False)
 
     with drawing.file.open("rb") as fh:
-        stamped = stamp_notes(fh.read(), notes, mode=mode, document_name=drawing.name)
+        stamped = stamp_registrations(
+            fh.read(), registrations, mode=mode, document_name=drawing.name
+        )
 
-    filename = f"{drawing.name} ({EXPORT_MODES[mode]}).pdf"
     response = HttpResponse(stamped, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Disposition"] = (
+        f'attachment; filename="{drawing.name} ({EXPORT_MODES[mode]}).pdf"'
+    )
     return response
 
 
-# --- Organization management (admins) ----------------------------------------
+# --- Registrations -----------------------------------------------------------
 
 
-def _disciplines_section(request, form=None):
+def _close_and_refresh(response):
+    """Tell the viewer to close the sheet and re-fetch the pin layer."""
+    response["HX-Trigger"] = json.dumps({"micki:close-sheet": True, "micki:refresh-pins": True})
+    return response
+
+
+def _can_edit(user, registration):
+    return registration.author_id == user.id or user.is_org_admin
+
+
+@login_required
+def registrations(request):
+    """Cross-project list with filters."""
+    qs = _registrations(request).select_related(
+        "project", "discipline", "assigned_contractor", "responsible", "author"
+    )
+
+    status = request.GET.get("status", "")
+    if status in dict(Registration.STATUS_CHOICES):
+        qs = qs.filter(status=status)
+    if request.GET.get("overdue") == "1":
+        qs = qs.exclude(status=Registration.APPROVED).filter(
+            deadline__lt=timezone.localdate()
+        )
+    project_slug = request.GET.get("project", "")
+    if project_slug:
+        qs = qs.filter(project__slug=project_slug)
+    discipline_id = request.GET.get("discipline", "")
+    if discipline_id.isdigit():
+        qs = qs.filter(discipline_id=int(discipline_id))
+
     return render(
         request,
-        "core/partials/disciplines_section.html",
+        "core/registrations.html",
         {
+            "registrations": qs,
+            "projects": _projects(request),
             "disciplines": request.user.organization.disciplines.all(),
-            "form": form or DisciplineForm(),
+            "status_choices": Registration.STATUS_CHOICES,
+            "selected": {
+                "status": status,
+                "project": project_slug,
+                "discipline": discipline_id,
+                "overdue": request.GET.get("overdue", ""),
+            },
         },
     )
+
+
+@login_required
+def registration_new(request, slug):
+    """Create a registration, optionally pinned to a drawing page.
+
+    Reached two ways: from the viewer with drawing/page/x/y in the query
+    string, or from the project page with none of them (D3 — a registration
+    doesn't need a drawing).
+    """
+    project = _get_project(request, slug)
+    from_viewer = bool(request.GET.get("x") or request.POST.get("x"))
+
+    if request.method == "POST":
+        form = RegistrationForm(project, request.POST)
+        if form.is_valid():
+            registration = form.save(commit=False)
+            registration.project = project
+            registration.author = request.user
+            _apply_pin(registration, request, project)
+            registration.save()
+            if request.FILES.get("photo"):
+                _add_photo(registration, request.FILES["photo"], request.user)
+            if from_viewer:
+                return _close_and_refresh(render(request, "core/partials/sheet_saved.html"))
+            return redirect("core:registration_detail", pk=registration.pk)
+    else:
+        form = RegistrationForm(project)
+
+    context = {
+        "form": form,
+        "photo_form": PhotoUploadForm(),
+        "project": project,
+        "action": request.get_full_path(),
+        "from_viewer": from_viewer,
+    }
+    template = (
+        "core/partials/registration_form.html" if from_viewer else "core/registration_form.html"
+    )
+    return render(request, template, context)
+
+
+def _apply_pin(registration, request, project):
+    """Attach the tapped location, when the form came from the viewer."""
+    drawing_id = request.POST.get("drawing")
+    if not drawing_id:
+        return
+    # Scoped to the project, so a posted id can't reach another project's drawing.
+    drawing = project.drawings.filter(pk=drawing_id).first()
+    if drawing is None:
+        return
+    registration.drawing = drawing
+    registration.page_number = int(request.POST.get("page") or 1)
+    registration.x_pct = request.POST["x"]
+    registration.y_pct = request.POST["y"]
+
+
+@login_required
+def registration_detail(request, pk):
+    registration = get_object_or_404(
+        _registrations(request).select_related(
+            "project", "discipline", "assigned_contractor", "responsible", "author", "drawing"
+        ),
+        pk=pk,
+    )
+    context = {
+        "registration": registration,
+        "can_edit": _can_edit(request.user, registration),
+        "photo_form": PhotoUploadForm(),
+    }
+    if request.headers.get("HX-Request"):
+        return render(request, "core/partials/registration_sheet.html", context)
+    return render(request, "core/registration_detail.html", context)
+
+
+@login_required
+def registration_edit(request, pk):
+    registration = get_object_or_404(_registrations(request), pk=pk)
+    if not _can_edit(request.user, registration):
+        return HttpResponseForbidden()
+    if request.method == "POST":
+        form = RegistrationForm(registration.project, request.POST, instance=registration)
+        if form.is_valid():
+            form.save()
+            return redirect("core:registration_detail", pk=registration.pk)
+    else:
+        form = RegistrationForm(registration.project, instance=registration)
+    return render(
+        request,
+        "core/registration_form.html",
+        {
+            "form": form,
+            "photo_form": PhotoUploadForm(),
+            "project": registration.project,
+            "registration": registration,
+            "action": request.path,
+        },
+    )
+
+
+@login_required
+@require_POST
+def registration_status(request, pk, action):
+    """Åben → Løst → Godkendt, and back (D8).
+
+    Anyone on the project can mark something Løst; only the person who
+    raised it (or an admin) may approve, so a fix isn't signed off by the
+    same hand that made it.
+    """
+    registration = get_object_or_404(_registrations(request), pk=pk)
+
+    if action == "resolve":
+        registration.mark_resolved()
+    elif action == "approve":
+        if not _can_edit(request.user, registration):
+            return HttpResponseForbidden("Kun opretteren eller en administrator kan godkende.")
+        registration.mark_approved()
+    elif action == "reopen":
+        registration.reopen()
+    else:
+        raise Http404
+
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "core/partials/registration_status.html",
+            {"registration": registration, "can_edit": _can_edit(request.user, registration)},
+        )
+    return redirect("core:registration_detail", pk=registration.pk)
+
+
+@login_required
+@require_POST
+def registration_delete(request, pk):
+    registration = get_object_or_404(_registrations(request), pk=pk)
+    if not _can_edit(request.user, registration):
+        return HttpResponseForbidden()
+    slug = registration.project.slug
+    registration.delete()
+    if request.headers.get("HX-Request"):
+        return _close_and_refresh(render(request, "core/partials/sheet_saved.html"))
+    return redirect("core:project_detail", slug=slug)
+
+
+def _add_photo(registration, uploaded, user):
+    full, thumb = process_photo(uploaded)
+    photo = RegistrationPhoto(registration=registration, uploaded_by=user)
+    stem = uuid.uuid4().hex
+    photo.image.save(f"{stem}.jpg", full, save=False)
+    photo.thumbnail.save(f"{stem}-thumb.jpg", thumb, save=False)
+    photo.save()
+    return photo
+
+
+@login_required
+@require_POST
+def registration_photo_add(request, pk):
+    registration = get_object_or_404(_registrations(request), pk=pk)
+    form = PhotoUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        _add_photo(registration, form.cleaned_data["photo"], request.user)
+    return render(
+        request,
+        "core/partials/registration_photos.html",
+        {"registration": registration, "photo_form": PhotoUploadForm(),
+         "can_edit": _can_edit(request.user, registration)},
+    )
+
+
+@login_required
+@require_POST
+def registration_photo_delete(request, pk):
+    photo = get_object_or_404(
+        RegistrationPhoto, pk=pk, registration__project__in=_projects(request)
+    )
+    registration = photo.registration
+    if not _can_edit(request.user, registration):
+        return HttpResponseForbidden()
+    photo.image.delete(save=False)
+    photo.thumbnail.delete(save=False)
+    photo.delete()
+    return render(
+        request,
+        "core/partials/registration_photos.html",
+        {"registration": registration, "photo_form": PhotoUploadForm(),
+         "can_edit": _can_edit(request.user, registration)},
+    )
+
+
+@login_required
+def registration_photo(request, pk, size):
+    """Serve photo bytes. Nothing under MEDIA_ROOT is web-reachable, so this
+    is the only path to an image and it is access-checked."""
+    photo = get_object_or_404(
+        RegistrationPhoto, pk=pk, registration__project__in=_projects(request)
+    )
+    field = photo.thumbnail if size == "thumb" else photo.image
+    if not field:
+        raise Http404
+    return FileResponse(field.open("rb"), content_type="image/jpeg")
+
+
+@login_required
+def pins(request, pk):
+    """HTMX partial: pinned registrations on one page of a drawing."""
+    drawing = get_object_or_404(_drawings(request), pk=pk)
+    page = int(request.GET.get("page", 1))
+    return render(
+        request,
+        "core/partials/pins.html",
+        {
+            "registrations": drawing.registrations.filter(
+                page_number=page, x_pct__isnull=False
+            ).select_related("discipline")
+        },
+    )
+
+
+@login_required
+def drawing_registrations(request, pk):
+    """HTMX partial: every registration on a drawing, listed under the viewer."""
+    drawing = get_object_or_404(_drawings(request), pk=pk)
+    return render(
+        request,
+        "core/partials/registration_rows.html",
+        {
+            "registrations": drawing.registrations.select_related(
+                "discipline", "assigned_contractor", "author"
+            ).prefetch_related("photos"),
+        },
+    )
+
+
+# --- Organization management (admins) ----------------------------------------
 
 
 @org_admin_required
@@ -406,20 +602,8 @@ def users(request):
     )
 
 
-@org_admin_required
-@require_POST
-def invite_create(request):
+def _invitations_response(request, form=None, sent=False):
     org = request.user.organization
-    form = InvitationForm(org, request.POST)
-    sent = False
-    if form.is_valid():
-        invitation = form.save(commit=False)
-        invitation.organization = org
-        invitation.invited_by = request.user
-        invitation.save()
-        send_invitation(invitation)
-        form = None
-        sent = True
     return render(
         request,
         "core/partials/invitations_section.html",
@@ -433,77 +617,26 @@ def invite_create(request):
 
 @org_admin_required
 @require_POST
-def invite_revoke(request, pk):
+def invite_create(request):
     org = request.user.organization
-    get_object_or_404(Invitation, pk=pk, organization=org, accepted_at__isnull=True).delete()
-    return render(
-        request,
-        "core/partials/invitations_section.html",
-        {
-            "invitations": org.invitations.filter(accepted_at__isnull=True),
-            "form": InvitationForm(org),
-        },
-    )
-
-
-@org_admin_required
-def settings(request):
-    """Organization settings — disciplines only, for now."""
-    return render(
-        request,
-        "core/settings.html",
-        {"disciplines": request.user.organization.disciplines.all(), "form": DisciplineForm()},
-    )
-
-
-@org_admin_required
-@require_POST
-def discipline_create(request):
-    form = DisciplineForm(request.POST)
+    form = InvitationForm(org, request.POST)
     if form.is_valid():
-        discipline = form.save(commit=False)
-        discipline.organization = request.user.organization
-        discipline.save()
-        form = None
-    return _disciplines_section(request, form)
-
-
-@org_admin_required
-def discipline_edit(request, pk):
-    discipline = get_object_or_404(
-        Discipline, pk=pk, organization=request.user.organization
-    )
-    if request.method == "POST":
-        form = DisciplineForm(request.POST, instance=discipline)
-        if form.is_valid():
-            form.save()
-            return _disciplines_section(request)
-    else:
-        form = DisciplineForm(instance=discipline)
-    return render(
-        request,
-        "core/partials/discipline_row_edit.html",
-        {"discipline": discipline, "form": form},
-    )
+        invitation = form.save(commit=False)
+        invitation.organization = org
+        invitation.invited_by = request.user
+        invitation.save()
+        send_invitation(invitation)
+        return _invitations_response(request, sent=True)
+    return _invitations_response(request, form)
 
 
 @org_admin_required
 @require_POST
-def discipline_delete(request, pk):
-    discipline = get_object_or_404(
-        Discipline, pk=pk, organization=request.user.organization
-    )
-    if discipline.notes.exists():
-        return render(
-            request,
-            "core/partials/discipline_row.html",
-            {
-                "discipline": discipline,
-                "error": f"Bruges af {discipline.notes.count()} note(r) — kan ikke slettes.",
-            },
-        )
-    discipline.delete()
-    return _disciplines_section(request)
+def invite_revoke(request, pk):
+    get_object_or_404(
+        Invitation, pk=pk, organization=request.user.organization, accepted_at__isnull=True
+    ).delete()
+    return _invitations_response(request)
 
 
 @org_admin_required
@@ -525,111 +658,112 @@ def user_toggle(request, pk, field):
     return render(request, "core/partials/user_row.html", {"u": target})
 
 
-# --- Notes -------------------------------------------------------------------
-
-
-def _close_and_refresh(response):
-    """Tell the viewer to close the note sheet and re-fetch the pin layer."""
-    response["HX-Trigger"] = json.dumps({"micki:close-sheet": True, "micki:refresh-pins": True})
-    return response
-
-
-def _can_edit(user, note):
-    return note.author_id == user.id or user.is_org_admin
-
-
-@login_required
-def pins(request, pk):
-    """HTMX partial: all pins for one page of a drawing."""
-    drawing = get_object_or_404(_drawings(request), pk=pk)
-    page = int(request.GET.get("page", 1))
-    notes = drawing.notes.filter(page_number=page).select_related("discipline", "author")
-    return render(request, "core/partials/pins.html", {"notes": notes})
-
-
-@login_required
-def notes_list(request, pk):
-    """HTMX partial: every note on the drawing, for the list below the viewer."""
-    drawing = get_object_or_404(_drawings(request), pk=pk)
-    notes = drawing.notes.select_related("discipline", "author")
-    return render(request, "core/partials/notes_list.html", {"notes": notes})
-
-
-def _attach_photo(note, request):
-    """Replace the note's photo with a downscaled JPEG when a new file arrived."""
-    if request.FILES.get("photo"):
-        note.photo.save(f"{uuid.uuid4().hex}.jpg", process_upload(request.FILES["photo"]), save=False)
-
-
-@login_required
-def note_new(request, pk):
-    drawing = get_object_or_404(_drawings(request), pk=pk)
-    if request.method == "POST":
-        form = NoteForm(request.user.organization, request.POST, request.FILES)
-        if form.is_valid():
-            note = form.save(commit=False)
-            note.drawing = drawing
-            note.page_number = int(request.POST["page"])
-            note.x_pct = request.POST["x"]
-            note.y_pct = request.POST["y"]
-            note.author = request.user
-            _attach_photo(note, request)
-            note.save()
-            return _close_and_refresh(render(request, "core/partials/note_saved.html"))
-    else:
-        form = NoteForm(request.user.organization)
-    context = {
-        "form": form,
-        "action": request.path,
-        "x": request.GET.get("x", request.POST.get("x")),
-        "y": request.GET.get("y", request.POST.get("y")),
-        "page": request.GET.get("page", request.POST.get("page")),
-    }
-    return render(request, "core/partials/note_form.html", context)
-
-
-@login_required
-def note_detail(request, pk):
-    note = get_object_or_404(
-        _notes(request).select_related("discipline", "author"), pk=pk
-    )
+@org_admin_required
+def settings(request):
+    org = request.user.organization
     return render(
         request,
-        "core/partials/note_detail.html",
-        {"note": note, "can_edit": _can_edit(request.user, note)},
+        "core/settings.html",
+        {
+            "disciplines": org.disciplines.all(),
+            "form": DisciplineForm(),
+            "contractors": org.contractors.all(),
+            "contractor_form": ContractorForm(),
+        },
     )
 
 
-@login_required
-def note_edit(request, pk):
-    note = get_object_or_404(_notes(request), pk=pk)
-    if not _can_edit(request.user, note):
-        return HttpResponseForbidden()
-    if request.method == "POST":
-        form = NoteForm(request.user.organization, request.POST, request.FILES, instance=note)
-        if form.is_valid():
-            note = form.save(commit=False)
-            _attach_photo(note, request)
-            note.save()
-            return _close_and_refresh(render(request, "core/partials/note_saved.html"))
-    else:
-        form = NoteForm(request.user.organization, instance=note)
-    return render(request, "core/partials/note_form.html", {"form": form, "action": request.path})
+def _disciplines_section(request, form=None):
+    return render(
+        request,
+        "core/partials/disciplines_section.html",
+        {"disciplines": request.user.organization.disciplines.all(), "form": form or DisciplineForm()},
+    )
 
 
-@login_required
-def note_photo(request, pk):
-    note = get_object_or_404(_notes(request), pk=pk)
-    if not note.photo:
-        raise Http404
-    return FileResponse(note.photo.open("rb"), content_type="image/jpeg")
-
-
-@login_required
+@org_admin_required
 @require_POST
-def note_delete(request, pk):
-    note = get_object_or_404(_notes(request), pk=pk)
-    if not _can_edit(request.user, note):
-        return HttpResponseForbidden()
-    note.delete()
-    return _close_and_refresh(render(request, "core/partials/note_saved.html"))
+def discipline_create(request):
+    form = DisciplineForm(request.POST)
+    if form.is_valid():
+        discipline = form.save(commit=False)
+        discipline.organization = request.user.organization
+        discipline.save()
+        form = None
+    return _disciplines_section(request, form)
+
+
+@org_admin_required
+def discipline_edit(request, pk):
+    discipline = get_object_or_404(Discipline, pk=pk, organization=request.user.organization)
+    if request.method == "POST":
+        form = DisciplineForm(request.POST, instance=discipline)
+        if form.is_valid():
+            form.save()
+            return _disciplines_section(request)
+    else:
+        form = DisciplineForm(instance=discipline)
+    return render(
+        request, "core/partials/discipline_row_edit.html", {"discipline": discipline, "form": form}
+    )
+
+
+@org_admin_required
+@require_POST
+def discipline_delete(request, pk):
+    discipline = get_object_or_404(Discipline, pk=pk, organization=request.user.organization)
+    if discipline.registrations.exists():
+        return render(
+            request,
+            "core/partials/discipline_row.html",
+            {
+                "discipline": discipline,
+                "error": f"Bruges af {discipline.registrations.count()} registrering(er).",
+            },
+        )
+    discipline.delete()
+    return _disciplines_section(request)
+
+
+def _contractors_section(request, form=None):
+    return render(
+        request,
+        "core/partials/contractors_section.html",
+        {
+            "contractors": request.user.organization.contractors.all(),
+            "contractor_form": form or ContractorForm(),
+        },
+    )
+
+
+@org_admin_required
+@require_POST
+def contractor_create(request):
+    form = ContractorForm(request.POST)
+    if form.is_valid():
+        contractor = form.save(commit=False)
+        contractor.organization = request.user.organization
+        contractor.save()
+        form = None
+    return _contractors_section(request, form)
+
+
+@org_admin_required
+@require_POST
+def contractor_delete(request, pk):
+    contractor = get_object_or_404(
+        Contractor, pk=pk, organization=request.user.organization
+    )
+    if contractor.registrations.exists():
+        return _contractors_section(request)
+    contractor.delete()
+    return _contractors_section(request)
+
+
+# --- Placeholder -------------------------------------------------------------
+
+
+@login_required
+def reports(request):
+    """Rapporter — generated PDFs of filtered registrations. Phase 5."""
+    return render(request, "core/placeholder.html", {"heading": "Rapporter", "icon": "i-reports"})

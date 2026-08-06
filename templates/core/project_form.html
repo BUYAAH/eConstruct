@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ heading }} — {{ brand }}{% endblock %}
+
+{% block topbar_title %}
+<nav aria-label="Brødkrumme" class="min-width-0">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:projects' %}">Projekter</a></li>
+        <li class="breadcrumb-item active text-truncate" aria-current="page">{{ heading }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 44rem;">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2 small">{{ form.non_field_errors|join:" " }}</div>
+            {% endif %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.name == "members" %}
+                <div class="form-text">
+                    Kun deltagere kan se projektet. Administratorer ser altid alle projekter.
+                </div>
+                {% elif field.name == "contractors" %}
+                <div class="form-text">
+                    Registreringer kan kun tildeles firmaer der er valgt her.
+                    Firmaer oprettes under <a href="{% url 'core:settings' %}">Indstillinger</a>.
+                </div>
+                {% endif %}
+                {% if field.errors %}
+                <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary">Gem</button>
+                <a class="btn btn-outline-secondary"
+                   href="{% if project %}{% url 'core:project_detail' project.slug %}{% else %}{% url 'core:projects' %}{% endif %}">
+                    Annullér
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

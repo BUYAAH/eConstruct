@@ -3,19 +3,25 @@
 
 {% block title %}{{ drawing.name }} — {{ brand }}{% endblock %}
 
-{% block page_title %}{{ drawing.name }}{% endblock %}
+{% block topbar_title %}
+<nav aria-label="Brødkrumme" class="min-width-0">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:projects' %}">Projekter</a></li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'core:project_detail' project.slug %}">{{ project.name }}</a>
+        </li>
+        <li class="breadcrumb-item active text-truncate" aria-current="page">{{ drawing.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 gap-2">
-    <h1 class="h6 mb-0 text-truncate">{{ drawing.name }}</h1>
-    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="{% url 'core:drawings' %}">&larr; Tegninger</a>
-</div>
-
 <div id="viewer-root"
      data-pdfjs="{% static 'vendor/pdfjs/pdf.min.mjs' %}"
      data-pdfjs-worker="{% static 'vendor/pdfjs/pdf.worker.min.mjs' %}"
      data-pdf-url="{% url 'core:drawing_pdf' drawing.pk %}"
-     data-note-form-url="{% url 'core:note_new' drawing.pk %}">
+     data-drawing-id="{{ drawing.pk }}"
+     data-note-form-url="{% url 'core:registration_new' project.slug %}">
 
     <div class="card mb-3">
         <div class="card-body py-2 px-2">
@@ -28,21 +34,19 @@
                 </span>
                 <button id="next-page" class="btn btn-sm btn-outline-secondary px-3" disabled>&rarr;</button>
                 <span class="vr d-none d-sm-inline"></span>
-                <button id="add-note-btn" class="btn btn-sm btn-primary px-3">+ Note</button>
+                <button id="add-note-btn" class="btn btn-sm btn-primary px-3">+ Registrering</button>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-success dropdown-toggle px-3" data-bs-toggle="dropdown">
                         Hent PDF
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        <li><a class="dropdown-item"
-                               href="{% url 'core:export_drawing' drawing.pk 'summary' %}">
+                        <li><a class="dropdown-item" href="{% url 'core:export_drawing' drawing.pk 'summary' %}">
                             Nummererede nåle + oversigtsside
-                            <div class="small text-body-secondary">Kan læses i enhver PDF-visning</div>
+                            <div class="small text-body-secondary">Send denne til firmaet</div>
                         </a></li>
-                        <li><a class="dropdown-item"
-                               href="{% url 'core:export_drawing' drawing.pk 'inline' %}">
-                            Noter tegnet på siden
-                            <div class="small text-body-secondary">Tekstbokse ved hver nål — bedst til få, korte noter</div>
+                        <li><a class="dropdown-item" href="{% url 'core:export_drawing' drawing.pk 'inline' %}">
+                            Tekst tegnet på siden
+                            <div class="small text-body-secondary">Bedst til få, korte registreringer</div>
                         </a></li>
                     </ul>
                 </div>
@@ -55,12 +59,10 @@
                 {% endfor %}
             </div>
             <p id="add-note-hint" class="text-center small text-primary d-none mb-0 mt-2">
-                Tryk på siden dér, hvor noten skal placeres.
+                Tryk på tegningen dér, hvor registreringen hører til.
             </p>
         </div>
     </div>
-
-    <div id="export-result"></div>
 
     <div id="pdf-status" class="text-center text-body-secondary py-5">
         <div class="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -77,18 +79,18 @@
     </div>
 
     <div class="card mt-3">
-        <div class="card-header">Noter</div>
+        <div class="card-header">Registreringer på denne tegning</div>
         <div id="notes-list"
-             hx-get="{% url 'core:notes_list' drawing.pk %}"
+             hx-get="{% url 'core:drawing_registrations' drawing.pk %}"
              hx-trigger="load, micki:refresh-pins from:body"
              hx-swap="innerHTML"></div>
     </div>
 </div>
 
 <div class="offcanvas offcanvas-bottom" tabindex="-1" id="note-sheet"
-     style="--bs-offcanvas-height: auto; max-height: 80vh;" data-bs-scroll="true">
+     style="--bs-offcanvas-height: auto; max-height: 85vh;" data-bs-scroll="true">
     <div class="offcanvas-header pb-1">
-        <h2 class="offcanvas-title h6">Note</h2>
+        <h2 class="offcanvas-title h6">Registrering</h2>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Luk"></button>
     </div>
     <div class="offcanvas-body pt-2" id="note-sheet-body"></div>

@@ -1,0 +1,31 @@
+{% comment %}
+Thumbnails link to the full rendition. Both are generated at upload and
+served only through an access-checked view — nothing under MEDIA_ROOT is
+web-reachable.
+{% endcomment %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    {% for photo in registration.photos.all %}
+    <figure class="reg-photo mb-0">
+        <a href="{% url 'core:registration_photo' photo.pk 'full' %}" target="_blank" rel="noopener">
+            <img src="{% url 'core:registration_photo' photo.pk 'thumb' %}" alt="Foto"
+                 class="rounded" loading="lazy">
+        </a>
+        {% if can_edit %}
+        <button class="btn btn-sm btn-outline-danger reg-photo-delete"
+                hx-post="{% url 'core:registration_photo_delete' photo.pk %}"
+                hx-target="#registration-photos" hx-swap="innerHTML"
+                hx-confirm="Slet dette foto?" aria-label="Slet foto">&times;</button>
+        {% endif %}
+    </figure>
+    {% empty %}
+    <p class="text-body-secondary small mb-0">Ingen fotos endnu.</p>
+    {% endfor %}
+</div>
+
+<form hx-post="{% url 'core:registration_photo_add' registration.pk %}"
+      hx-target="#registration-photos" hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      class="d-flex gap-2 align-items-start">
+    {{ photo_form.photo }}
+    <button class="btn btn-sm btn-outline-secondary flex-shrink-0">Tilføj</button>
+</form>

@@ -1,0 +1,52 @@
+{% comment %}
+Åben → Løst → Godkendt (ROADMAP.md D8). Anyone on the project can mark
+something løst; only the author or an admin can godkend, so a fix isn't
+signed off by the hand that made it — the view enforces that, this only
+hides the button.
+{% endcomment %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    {% include "core/partials/status_badge.html" with r=registration %}
+    {% if registration.resolved_at %}
+    <span class="small text-body-secondary">
+        Løst {{ registration.resolved_at|date:"j. b Y" }}
+    </span>
+    {% endif %}
+    {% if registration.approved_at %}
+    <span class="small text-body-secondary">
+        Godkendt {{ registration.approved_at|date:"j. b Y" }}
+    </span>
+    {% endif %}
+</div>
+
+<div class="d-grid gap-2">
+    {% if registration.status == "open" %}
+    <button class="btn btn-sm btn-primary"
+            hx-post="{% url 'core:registration_status' registration.pk 'resolve' %}"
+            hx-target="#registration-status" hx-swap="innerHTML">
+        Markér som løst
+    </button>
+    {% elif registration.status == "resolved" %}
+    {% if can_edit %}
+    <button class="btn btn-sm btn-success"
+            hx-post="{% url 'core:registration_status' registration.pk 'approve' %}"
+            hx-target="#registration-status" hx-swap="innerHTML">
+        Godkend
+    </button>
+    {% else %}
+    <p class="small text-body-secondary mb-0">
+        Afventer godkendelse fra {{ registration.author|default:"opretteren" }}.
+    </p>
+    {% endif %}
+    <button class="btn btn-sm btn-outline-secondary"
+            hx-post="{% url 'core:registration_status' registration.pk 'reopen' %}"
+            hx-target="#registration-status" hx-swap="innerHTML">
+        Genåbn
+    </button>
+    {% else %}
+    <button class="btn btn-sm btn-outline-secondary"
+            hx-post="{% url 'core:registration_status' registration.pk 'reopen' %}"
+            hx-target="#registration-status" hx-swap="innerHTML">
+        Genåbn
+    </button>
+    {% endif %}
+</div>

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if registration %}Redigér {{ registration.label }}{% else %}Ny registrering{% endif %} — {{ brand }}
+{% endblock %}
+
+{% block topbar_title %}
+<nav aria-label="Brødkrumme" class="min-width-0">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:projects' %}">Projekter</a></li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'core:project_detail' project.slug %}">{{ project.name }}</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            {% if registration %}{{ registration.label }}{% else %}Ny registrering{% endif %}
+        </li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 40rem;">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate action="{{ action }}">
+            {% csrf_token %}
+            {% include "core/partials/registration_fields.html" %}
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary">Gem</button>
+                <a class="btn btn-outline-secondary"
+                   href="{% if registration %}{% url 'core:registration_detail' registration.pk %}{% else %}{% url 'core:project_detail' project.slug %}{% endif %}">
+                    Annullér
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

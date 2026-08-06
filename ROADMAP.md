@@ -176,7 +176,38 @@ Original plan, for reference:
 Ends with: someone can clone, migrate, seed, log in, and see the dashboard
 with no external dependency.
 
-### Phase 2 — Project model
+### Phase 2 — Project model — ✅ DONE 2026-08-06
+
+Built with phase 4 in one pass, since Registration hangs off Project and the
+mock dicts covered both. `_DEMO_PROJECTS` / `_DEMO_REGISTRATIONS` are gone;
+the card layout agreed during the mock-up phase survived intact and is now
+fed by annotations. `Project.progress` is derived from the approved share of
+registrations rather than a number someone maintains by hand — a manual
+percentage is the first thing to go stale on a project board.
+
+### Phase 4 — Registrations — ✅ DONE 2026-08-06
+
+`Note` became `Registration`, gaining number, subject/description,
+contractor, responsible, deadline and status. `Contractor` and
+`RegistrationPhoto` are new. Drawings moved under Project.
+
+Worth knowing:
+
+- **`Drawing` deletion is `SET_NULL` on the registration, not CASCADE.** An
+  observation outlives the drawing it was pinned to, or deleting a
+  superseded revision would erase site history. Tested.
+- **Numbers are allocated under `select_for_update` on the project row.**
+  A no-op on SQLite (writes serialize anyway), correct on Postgres.
+- **Test media goes to a temp dir.** The database rolls back between tests
+  but the filesystem does not, so file-mutating suites rebuild their
+  fixtures per test rather than in `setUpTestData`. This was a real failure,
+  not a precaution.
+
+Still open from the original phase-4 plan: nothing. Phase 5 (Rapporter and
+the KPI overview) is next — the overview already has real counts, so what
+remains there is the report generator.
+
+Original plan, for reference:
 
 Turn the mock-up into real data with minimal template churn:
 
@@ -292,7 +323,39 @@ Kept with their reasoning so they don't get re-litigated.
   use "Firmaer"/companies for the *subcontractors on a project*, a
   different concept that keeps that word free).
 
-  **This makes scoping a correctness requirement, not a style choice.**
+### Domain decisions, answered 2026-08-06 (second round)
+
+- **D7 — What is a "Firma"? → A `Contractor` the organization owns, with no
+  login.** Subcontractors are records you create (Elfirma X, VVS Y) and
+  assign work to; they receive a PDF or an email, never an account. This
+  keeps D6's sealed tenancy intact — there is no cross-organization sharing
+  anywhere in the system. If subcontractor logins are ever wanted, that is a
+  deliberate new feature with its own permission layer, not a small change.
+- **D8 — Registration workflow → Åben → Løst → Godkendt.** No "igangsat"
+  state. The verification step is the point: a fix isn't final until someone
+  signs it off, which is what makes this an audit trail rather than a
+  to-do list. "Overskredet" is derived from `deadline < now`, never stored.
+- **D9 — Project access → explicit membership.** Users are added to
+  projects and see only those, so a field worker's phone shows their site
+  and nothing else.
+- **D10 — Dokumenter → out of scope for now.** Only `Drawing` exists;
+  the nav entry is gone until there's a real need.
+- **D11 — Assignment → contractor required, person optional.** The firm
+  owes the fix (`assigned_contractor`); someone at your own organization
+  optionally owns chasing it (`responsible`).
+- **D12 — Registrations are numbered sequentially per project.** #001, #002
+  within each project, allocated under a row lock on the project. This is
+  how people refer to one on site and in reports.
+
+**Calls made without asking** (say the word and any of these change): a
+registration carries a short `subject` plus an optional longer
+`description`; `deadline` is optional; photos are many-per-registration with
+a generated thumbnail; project status is Planlagt/Aktiv/Afsluttet; `case_no`
+is typed by hand, not generated; any project member can create a
+registration and mark it Løst, but only its author or an org admin can mark
+it Godkendt.
+
+  **D6 makes scoping a correctness requirement, not a style choice.**
   Every queryset that touches organization-owned data filters on
   `request.user.organization`, and every object lookup by pk is scoped in
   the same query (`get_object_or_404(Model, pk=pk, organization=...)`),

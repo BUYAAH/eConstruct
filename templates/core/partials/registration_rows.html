@@ -1,0 +1,78 @@
+{% comment %}
+The registration table, shared by the project page, the cross-project list,
+the overview, and the list under the drawing viewer.
+
+Pass show_project=True to add a project column. table-responsive so it
+scrolls inside its card on narrow screens rather than pushing the page
+sideways.
+{% endcomment %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 reg-table">
+        <thead>
+            <tr>
+                <th scope="col">Nr.</th>
+                <th scope="col">Emne</th>
+                {% if show_project %}<th scope="col">Projekt</th>{% endif %}
+                <th scope="col">Faggruppe</th>
+                <th scope="col">Firma</th>
+                <th scope="col">Frist</th>
+                <th scope="col">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registrations %}
+            {% comment %}
+            The subject cell holds the link. data-page lets the viewer's
+            script jump to the right page instead of navigating — same markup,
+            two behaviours, decided by which page it's rendered on.
+            {% endcomment %}
+            <tr class="reg-row" {% if r.page_number %}data-page="{{ r.page_number }}"{% endif %}>
+                <td class="text-nowrap small text-body-secondary">{{ r.label }}</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="reg-dot" style="--dot: {{ r.discipline.color }};"></span>
+                        <a class="text-decoration-none text-body"
+                           href="{% url 'core:registration_detail' r.pk %}">{{ r.subject }}</a>
+                        {% if r.photos.all %}
+                        <svg class="app-icon text-body-secondary flex-shrink-0"
+                             role="img" aria-label="Har foto"><use href="#i-photo"></use></svg>
+                        {% endif %}
+                    </div>
+                    {% if r.drawing %}
+                    <div class="small text-body-secondary reg-sub">
+                        {{ r.drawing.name }} · s. {{ r.page_number }}
+                    </div>
+                    {% endif %}
+                </td>
+                {% if show_project %}
+                <td class="text-nowrap small">{{ r.project.name }}</td>
+                {% endif %}
+                <td class="text-nowrap">{{ r.discipline.name }}</td>
+                <td class="text-nowrap">
+                    {{ r.assigned_contractor.name }}
+                    {% if r.responsible %}
+                    <div class="small text-body-secondary reg-sub">&rarr; {{ r.responsible }}</div>
+                    {% endif %}
+                </td>
+                <td class="text-nowrap">
+                    {% if r.deadline %}
+                    <span {% if r.overdue %}class="text-danger fw-medium"{% endif %}>
+                        {{ r.deadline|date:"SHORT_DATE_FORMAT" }}
+                    </span>
+                    {% else %}
+                    <span class="text-body-secondary">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td>{% include "core/partials/status_badge.html" with r=r %}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if show_project %}7{% else %}6{% endif %}"
+                    class="text-center text-body-secondary py-4">
+                    Ingen registreringer.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

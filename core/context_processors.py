@@ -11,12 +11,16 @@ from django.conf import settings
 _SECTION_BY_URL_NAME = {
     "overview": "overview",
     "projects": "projects",
+    "project_create": "projects",
     "project_detail": "projects",
-    "drawings": "drawings",
-    "drawing_upload": "drawings",
-    "drawing_delete": "drawings",
-    "viewer": "drawings",
+    "project_edit": "projects",
+    "drawing_upload": "projects",
+    "drawing_delete": "projects",
+    "viewer": "projects",
     "registrations": "registrations",
+    "registration_new": "registrations",
+    "registration_detail": "registrations",
+    "registration_edit": "registrations",
     "reports": "reports",
     "users": "users",
     "user_toggle": "users",
@@ -26,6 +30,8 @@ _SECTION_BY_URL_NAME = {
     "discipline_create": "settings",
     "discipline_edit": "settings",
     "discipline_delete": "settings",
+    "contractor_create": "settings",
+    "contractor_delete": "settings",
 }
 
 

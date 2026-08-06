@@ -1,0 +1,15 @@
+{% comment %}
+The same fields inside the viewer's bottom sheet. The hidden inputs carry
+the tapped pin location, which the view writes onto the registration.
+{% endcomment %}
+<form hx-post="{{ action }}" hx-target="#note-sheet-body" hx-swap="innerHTML"
+      hx-encoding="multipart/form-data">
+    <input type="hidden" name="drawing" value="{{ request.GET.drawing }}">
+    <input type="hidden" name="page" value="{{ request.GET.page }}">
+    <input type="hidden" name="x" value="{{ request.GET.x }}">
+    <input type="hidden" name="y" value="{{ request.GET.y }}">
+
+    {% include "core/partials/registration_fields.html" %}
+
+    <button class="btn btn-primary w-100">Gem registrering</button>
+</form>

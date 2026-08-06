@@ -4,13 +4,30 @@
 {% block page_title %}Indstillinger{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">Faggrupper</div>
-    <div class="card-body p-2" id="disciplines-section">
-        {% include "core/partials/disciplines_section.html" %}
+<div class="row g-3">
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-header">Faggrupper</div>
+            <div class="card-body p-2" id="disciplines-section">
+                {% include "core/partials/disciplines_section.html" %}
+            </div>
+            <div class="card-footer small text-body-secondary">
+                Faggruppen bestemmer farven på nålen på tegningen og prikken i listen.
+            </div>
+        </div>
     </div>
-    <div class="card-footer small text-body-secondary">
-        Faggruppen bestemmer farven på nålen på tegningen og prikken i listen.
+
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-header">Firmaer</div>
+            <div class="card-body p-3" id="contractors-section">
+                {% include "core/partials/contractors_section.html" %}
+            </div>
+            <div class="card-footer small text-body-secondary">
+                Underentreprenører har ingen login. De modtager arbejdet som en
+                eksporteret PDF fra tegningen.
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

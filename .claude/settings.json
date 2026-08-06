@@ -64,7 +64,12 @@
       "Bash(../venv/Scripts/python.exe manage.py makemigrations)",
       "Bash(../venv/Scripts/python.exe manage.py migrate)",
       "Bash(../venv/Scripts/python.exe manage.py seed_demo)",
-      "Bash(ALLOWED_HOSTS=testserver,localhost ../venv/Scripts/python.exe manage.py test)"
+      "Bash(ALLOWED_HOSTS=testserver,localhost ../venv/Scripts/python.exe manage.py test)",
+      "Bash(rm -f db.sqlite3.pre-pivot.bak)",
+      "Bash(rm -rf media/drawings media/note_photos)",
+      "Bash(rm -f db.sqlite3)",
+      "Bash(rm -f core/migrations/0001_initial.py accounts/migrations/0001_initial.py accounts/migrations/0002_initial.py db.sqlite3)",
+      "Bash(rm -rf media/drawings media/registrations)"
     ]
   }
 }

@@ -1,0 +1,28 @@
+{% comment %}
+The registration fields themselves, shared by the full page form and the
+bottom-sheet form in the viewer, so the two can't drift apart.
+
+The photo input is only offered when creating: on an existing registration
+photos are managed separately, so several can be added without resubmitting
+the whole form.
+{% endcomment %}
+{% if form.non_field_errors %}
+<div class="alert alert-danger py-2 small">{{ form.non_field_errors|join:" " }}</div>
+{% endif %}
+
+{% for field in form %}
+<div class="mb-3">
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}
+    <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if not registration %}
+<div class="mb-3">
+    <label class="form-label" for="{{ photo_form.photo.id_for_label }}">{{ photo_form.photo.label }}</label>
+    {{ photo_form.photo }}
+</div>
+{% endif %}

@@ -2,6 +2,9 @@
 The sidebar nav list. Included twice by base.html — once in the fixed
 desktop rail, once inside the mobile offcanvas — so the links live in
 exactly one place. Active state comes from core.context_processors.nav.
+
+Tegninger has no top-level entry: drawings belong to a project, so they're
+reached through one.
 {% endcomment %}
 <nav class="nav flex-column gap-1 px-2">
     <a class="app-nav-link {% if nav_section == 'overview' %}active{% endif %}" href="{% url 'core:overview' %}">
@@ -9,9 +12,6 @@ exactly one place. Active state comes from core.context_processors.nav.
     </a>
     <a class="app-nav-link {% if nav_section == 'projects' %}active{% endif %}" href="{% url 'core:projects' %}">
         <svg class="app-icon"><use href="#i-projects"></use></svg>Projekter
-    </a>
-    <a class="app-nav-link {% if nav_section == 'drawings' %}active{% endif %}" href="{% url 'core:drawings' %}">
-        <svg class="app-icon"><use href="#i-drawings"></use></svg>Tegninger
     </a>
     <a class="app-nav-link {% if nav_section == 'registrations' %}active{% endif %}" href="{% url 'core:registrations' %}">
         <svg class="app-icon"><use href="#i-registrations"></use></svg>Registreringer

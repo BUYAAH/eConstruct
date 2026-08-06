@@ -82,7 +82,7 @@ function setAddMode(on) {
     addMode = on;
     addBtn.classList.toggle("btn-warning", on);
     addBtn.classList.toggle("btn-primary", !on);
-    addBtn.textContent = on ? "Cancel" : "+ Note";
+    addBtn.textContent = on ? "Annullér" : "+ Registrering";
     addHint.classList.toggle("d-none", !on);
     pinLayer.classList.toggle("add-mode", on);
 }
@@ -98,7 +98,7 @@ pinLayer.addEventListener("click", (e) => {
     htmx.ajax("GET", root.dataset.noteFormUrl, {
         target: "#note-sheet-body",
         swap: "innerHTML",
-        values: { x, y, page: pageNum },
+        values: { x, y, page: pageNum, drawing: root.dataset.drawingId },
     });
 });
 
@@ -114,9 +114,9 @@ document.body.addEventListener("micki:close-sheet", () => {
     bootstrap.Offcanvas.getOrCreateInstance(sheetEl).hide();
 });
 
-// --- Layer filter chips -------------------------------------------------------
+// --- Discipline filter chips -------------------------------------------------------
 
-function applyLayerFilter() {
+function applyDisciplineFilter() {
     const hidden = new Set(
         [...document.querySelectorAll(".discipline-chip:not(.active)")].map((c) => c.dataset.discipline)
     );
@@ -128,17 +128,17 @@ function applyLayerFilter() {
 document.querySelectorAll(".discipline-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
         chip.classList.toggle("active");
-        applyLayerFilter();
+        applyDisciplineFilter();
     });
 });
 
-pinLayer.addEventListener("htmx:afterSwap", applyLayerFilter);
+pinLayer.addEventListener("htmx:afterSwap", applyDisciplineFilter);
 
-// --- Notes list below the viewer: tapping a note jumps to its page ------------
+// --- List below the viewer: tapping a row jumps to its page ------------------
 
 document.getElementById("notes-list").addEventListener("click", (e) => {
-    const row = e.target.closest(".note-row");
-    if (row) goTo(parseInt(row.dataset.page, 10));
+    const row = e.target.closest(".reg-row");
+    if (row && row.dataset.page) goTo(parseInt(row.dataset.page, 10));
 });
 
 // --- Load the document --------------------------------------------------------
@@ -150,5 +150,5 @@ try {
     wrap.classList.remove("d-none");
     await renderPage();
 } catch (err) {
-    status.innerHTML = `<div class="alert alert-warning d-inline-block">Couldn't load the PDF.<br><span class="small">${err.message}</span></div>`;
+    status.innerHTML = `<div class="alert alert-warning d-inline-block">Tegningen kunne ikke indlæses.<br><span class="small">${err.message}</span></div>`;
 }

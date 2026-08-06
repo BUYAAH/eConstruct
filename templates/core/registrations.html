@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Registreringer — {{ brand }}{% endblock %}
+{% block page_title %}Registreringer{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    {% comment %}
+    A plain GET form, so every filtered view is a shareable URL and the back
+    button behaves. No HTMX here — there's nothing to preserve on the page.
+    {% endcomment %}
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1" for="f-project">Projekt</label>
+                <select class="form-select form-select-sm" name="project" id="f-project">
+                    <option value="">Alle</option>
+                    {% for p in projects %}
+                    <option value="{{ p.slug }}" {% if selected.project == p.slug %}selected{% endif %}>
+                        {{ p.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1" for="f-discipline">Faggruppe</label>
+                <select class="form-select form-select-sm" name="discipline" id="f-discipline">
+                    <option value="">Alle</option>
+                    {% for d in disciplines %}
+                    <option value="{{ d.pk }}" {% if selected.discipline == d.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ d.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1" for="f-status">Status</label>
+                <select class="form-select form-select-sm" name="status" id="f-status">
+                    <option value="">Alle</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if selected.status == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3 d-flex gap-2">
+                <div class="form-check align-self-center flex-grow-1">
+                    <input class="form-check-input" type="checkbox" name="overdue" value="1"
+                           id="f-overdue" {% if selected.overdue == "1" %}checked{% endif %}>
+                    <label class="form-check-label small" for="f-overdue">Kun overskredne</label>
+                </div>
+                <button class="btn btn-sm btn-primary flex-shrink-0">Filtrér</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    {% include "core/partials/registration_rows.html" with show_project=True %}
+</div>
+{% endblock %}

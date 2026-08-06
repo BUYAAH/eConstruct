@@ -1,8 +1,13 @@
-{% for note in notes %}
-<button class="pin"
-        style="left: {{ note.x_pct }}%; top: {{ note.y_pct }}%; --pin-color: {{ note.discipline.color }};"
-        data-discipline="{{ note.discipline_id }}"
-        hx-get="{% url 'core:note_detail' note.pk %}"
+{% comment %}
+The pins for one page. data-discipline drives the chip filter in viewer.js;
+pin-resolved dims what's already been dealt with so open items stand out.
+The pin shows its number, which is what people call it on site.
+{% endcomment %}
+{% for r in registrations %}
+<button class="pin {% if r.status != 'open' %}pin-resolved{% endif %}"
+        style="left: {{ r.x_pct }}%; top: {{ r.y_pct }}%; --pin-color: {{ r.discipline.color }};"
+        data-discipline="{{ r.discipline_id }}"
+        hx-get="{% url 'core:registration_detail' r.pk %}"
         hx-target="#note-sheet-body" hx-swap="innerHTML"
-        aria-label="Note: {{ note.text|truncatechars:60 }}"></button>
+        aria-label="{{ r.label }} {{ r.subject|truncatechars:60 }}">{{ r.number }}</button>
 {% endfor %}

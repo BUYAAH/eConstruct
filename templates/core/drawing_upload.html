@@ -5,8 +5,11 @@
 {% block topbar_title %}
 <nav aria-label="Brødkrumme" class="min-width-0">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'core:drawings' %}">Tegninger</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Upload</li>
+        <li class="breadcrumb-item"><a href="{% url 'core:projects' %}">Projekter</a></li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'core:project_detail' project.slug %}">{{ project.name }}</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Upload tegning</li>
     </ol>
 </nav>
 {% endblock %}
@@ -27,7 +30,8 @@
             {% endfor %}
             <div class="d-flex gap-2">
                 <button class="btn btn-primary">Upload</button>
-                <a class="btn btn-outline-secondary" href="{% url 'core:drawings' %}">Annullér</a>
+                <a class="btn btn-outline-secondary"
+                   href="{% url 'core:project_detail' project.slug %}">Annullér</a>
             </div>
         </form>
     </div>
