@@ -1,0 +1,46 @@
+{% if sent %}
+<div class="alert alert-success py-2 small">Invitationen er sendt.</div>
+{% endif %}
+
+<ul class="list-group list-group-flush mb-3">
+    {% for invitation in invitations %}
+    <li class="list-group-item d-flex align-items-center gap-2 px-0">
+        <div class="flex-grow-1 min-width-0">
+            <div class="text-truncate">{{ invitation.email }}</div>
+            <div class="small text-body-secondary">
+                Sendt {{ invitation.created_at|date:"j. b" }}
+                {% if invitation.as_org_admin %} · bliver admin{% endif %}
+                {% if invitation.is_expired %} · <span class="text-danger">udløbet</span>{% endif %}
+            </div>
+        </div>
+        <button class="btn btn-sm btn-outline-danger flex-shrink-0"
+                hx-post="{% url 'core:invite_revoke' invitation.pk %}"
+                hx-target="#invitations-section" hx-swap="innerHTML"
+                hx-confirm="Tilbagekald invitationen til {{ invitation.email }}?">
+            Tilbagekald
+        </button>
+    </li>
+    {% empty %}
+    <li class="list-group-item text-body-secondary small px-0">Ingen åbne invitationer.</li>
+    {% endfor %}
+</ul>
+
+<form hx-post="{% url 'core:invite_create' %}" hx-target="#invitations-section" hx-swap="innerHTML">
+    {% for field in form %}
+    {% if field.name == "as_org_admin" %}
+    <div class="form-check mb-3">
+        {{ field }}
+        <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    </div>
+    {% else %}
+    <div class="mb-2">
+        <label class="form-label small mb-1" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+        <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    <button class="btn btn-sm btn-primary">Send invitation</button>
+</form>

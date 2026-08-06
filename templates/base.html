@@ -25,7 +25,7 @@
     </a>
     {% include "partials/_sidenav.html" %}
     <div class="app-sidebar-footer mt-auto pt-3 px-3 small" style="color: rgba(255,255,255,.5);">
-        {{ user.company.name }}
+        {{ user.organization.name }}
     </div>
 </aside>
 
@@ -42,7 +42,7 @@
     <div class="offcanvas-body pt-0 d-flex flex-column">
         {% include "partials/_sidenav.html" %}
         <div class="app-sidebar-footer mt-auto pt-3 px-3 small" style="color: rgba(255,255,255,.5);">
-            {{ user.company.name }}
+            {{ user.organization.name }}
         </div>
     </div>
 </div>
@@ -75,7 +75,7 @@
                 <li class="dropdown-item-text">
                     <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
                     <div class="small text-body-secondary">{{ user.email }}</div>
-                    <div class="small text-body-secondary">{{ user.company.name }}</div>
+                    <div class="small text-body-secondary">{{ user.organization.name }}</div>
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>

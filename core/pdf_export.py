@@ -1,4 +1,4 @@
-"""Stamp Micki notes into a PDF so they are visible outside the app.
+"""Stamp notes into a PDF so they are visible outside the app.
 
 Two modes:
 - "summary": a numbered colored dot drawn at each pin (visible in every
@@ -26,8 +26,8 @@ def _hex_to_rgb(color):
 
 
 def _author_line(note):
-    author = str(note.author) if note.author else "Unknown"
-    return f"{note.layer.name} — {author}"
+    author = str(note.author) if note.author else "Ukendt"
+    return f"{note.discipline.name} — {author}"
 
 
 def _overlay(width, height, draw):
@@ -41,7 +41,7 @@ def _overlay(width, height, draw):
 
 
 def _note_xy(note, width, height):
-    """Micki stores pct from top-left; PDF coords are points from bottom-left.
+    """Notes store pct from top-left; PDF coords are points from bottom-left.
 
     Returns coordinates in a 0-based space; pages whose boxes don't start at
     (0, 0) (e.g. CAD exports centered on the origin) are handled by
@@ -100,17 +100,17 @@ def _summary_pages(document_name, numbered_notes):
     c = canvas.Canvas(buf, pagesize=(width, height))
     y = height - 60
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, f"Notes — {document_name}"[:70])
+    c.drawString(50, y, f"Noter — {document_name}"[:70])
     y -= 30
 
     for number, note in numbered_notes:
-        meta = f"{number}.  Page {note.page_number}  ·  {_author_line(note)}  ·  {note.created_at:%d %b %Y %H:%M}"
+        meta = f"{number}.  Side {note.page_number}  ·  {_author_line(note)}  ·  {note.created_at:%d %b %Y %H:%M}"
         lines = simpleSplit(note.text, "Helvetica", 10, width - 130)
         needed = 16 + len(lines) * 13 + 12
         if y - needed < 50:
             c.showPage()
             y = height - 60
-        rgb = _hex_to_rgb(note.layer.color)
+        rgb = _hex_to_rgb(note.discipline.color)
         c.setFillColorRGB(*rgb)
         c.circle(58, y + 3, 4, stroke=0, fill=1)
         c.setFont("Helvetica-Bold", 10)
@@ -144,14 +144,14 @@ def stamp_notes(pdf_bytes, notes, mode="summary", document_name=""):
 
     for page_index, page_notes in by_page.items():
         page = writer.pages[page_index]
-        box = page.cropbox  # what viewers (and thus Micki's percentages) show
+        box = page.cropbox  # what viewers (and thus our percentages) show
         width, height = float(box.width), float(box.height)
         left, bottom = float(box.left), float(box.bottom)
 
         def draw(c, page_notes=page_notes, width=width, height=height):
             for number, note in page_notes:
                 x, y = _note_xy(note, width, height)
-                rgb = _hex_to_rgb(note.layer.color)
+                rgb = _hex_to_rgb(note.discipline.color)
                 if mode == "inline":
                     _draw_inline_box(c, x, y, note, rgb, width, height)
                 else:
@@ -173,7 +173,7 @@ def stamp_notes(pdf_bytes, notes, mode="summary", document_name=""):
                 )
                 annotation[NameObject("/T")] = TextStringObject(f"#{number} {_author_line(note)}")
                 annotation[NameObject("/C")] = ArrayObject(
-                    FloatObject(c) for c in _hex_to_rgb(note.layer.color)
+                    FloatObject(c) for c in _hex_to_rgb(note.discipline.color)
                 )
                 writer.add_annotation(page_number=page_index, annotation=annotation)
 

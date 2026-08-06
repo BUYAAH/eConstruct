@@ -10,8 +10,8 @@ exactly one place. Active state comes from core.context_processors.nav.
     <a class="app-nav-link {% if nav_section == 'projects' %}active{% endif %}" href="{% url 'core:projects' %}">
         <svg class="app-icon"><use href="#i-projects"></use></svg>Projekter
     </a>
-    <a class="app-nav-link {% if nav_section == 'folders' %}active{% endif %}" href="{% url 'core:folders' %}">
-        <svg class="app-icon"><use href="#i-folders"></use></svg>Mapper
+    <a class="app-nav-link {% if nav_section == 'drawings' %}active{% endif %}" href="{% url 'core:drawings' %}">
+        <svg class="app-icon"><use href="#i-drawings"></use></svg>Tegninger
     </a>
     <a class="app-nav-link {% if nav_section == 'registrations' %}active{% endif %}" href="{% url 'core:registrations' %}">
         <svg class="app-icon"><use href="#i-registrations"></use></svg>Registreringer
@@ -20,7 +20,7 @@ exactly one place. Active state comes from core.context_processors.nav.
         <svg class="app-icon"><use href="#i-reports"></use></svg>Rapporter
     </a>
 
-    {% if user.is_company_admin %}
+    {% if user.is_org_admin %}
     <div class="app-nav-section mt-3 mb-1">Administration</div>
     <a class="app-nav-link {% if nav_section == 'users' %}active{% endif %}" href="{% url 'core:users' %}">
         <svg class="app-icon"><use href="#i-users"></use></svg>Brugere

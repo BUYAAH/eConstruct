@@ -118,14 +118,14 @@ document.body.addEventListener("micki:close-sheet", () => {
 
 function applyLayerFilter() {
     const hidden = new Set(
-        [...document.querySelectorAll(".layer-chip:not(.active)")].map((c) => c.dataset.layer)
+        [...document.querySelectorAll(".discipline-chip:not(.active)")].map((c) => c.dataset.discipline)
     );
     pinLayer.querySelectorAll(".pin").forEach((pin) => {
-        pin.classList.toggle("pin-hidden", hidden.has(pin.dataset.layer));
+        pin.classList.toggle("pin-hidden", hidden.has(pin.dataset.discipline));
     });
 }
 
-document.querySelectorAll(".layer-chip").forEach((chip) => {
+document.querySelectorAll(".discipline-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
         chip.classList.toggle("active");
         applyLayerFilter();

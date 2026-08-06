@@ -51,7 +51,20 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}  %{content_type}  %{size_download} bytes\\\\n\" \"http://127.0.0.1:8000/static/img/3%20-%201.%20ETAGE.pdf\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(sort -t: -k2 -rn)",
+      "Bash(git tag -a sharepoint-integration e685bd4 -m 'Last commit with the working Microsoft Graph / SharePoint integration. *)",
+      "Bash(git tag *)",
+      "Bash(git rm *)",
+      "Bash(python -c \"import django; print\\(django.get_version\\(\\)\\)\")",
+      "Bash(../venv/Scripts/python.exe -c ' *)",
+      "Bash(../venv/Scripts/python.exe -)",
+      "Bash(touch core/management/__init__.py core/management/commands/__init__.py)",
+      "Bash(../venv/Scripts/python.exe manage.py check)",
+      "Bash(../venv/Scripts/python.exe manage.py makemigrations)",
+      "Bash(../venv/Scripts/python.exe manage.py migrate)",
+      "Bash(../venv/Scripts/python.exe manage.py seed_demo)",
+      "Bash(ALLOWED_HOSTS=testserver,localhost ../venv/Scripts/python.exe manage.py test)"
     ]
   }
 }

@@ -256,14 +256,14 @@ body {
 
 #pin-layer.add-mode { cursor: crosshair; }
 
-.layer-chip {
+.discipline-chip {
     --chip: #0d6efd;
     border: 1.5px solid var(--chip);
     color: var(--chip);
     background: transparent;
 }
 
-.layer-chip.active {
+.discipline-chip.active {
     background: var(--chip);
     color: #fff;
 }
@@ -500,4 +500,17 @@ a.project-card:focus-visible {
     height: 2.5rem;
     color: var(--app-muted);
     opacity: .55;
+}
+
+/* --- Auth screens (login / accept invitation) --------------------------- */
+
+/* These render without the sidebar shell — base.html omits it for anonymous
+   users — so the card carries the whole page. */
+.auth-card {
+    width: 100%;
+    max-width: 24rem;
+}
+
+.auth-card .brand-dot {
+    flex-shrink: 0;
 }

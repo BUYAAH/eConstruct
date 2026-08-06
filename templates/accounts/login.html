@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% comment %}
+base.html hides the sidebar and topbar for anonymous users, so this renders
+as a bare centred card without needing its own shell.
+{% endcomment %}
+
+{% block title %}Log ind — {{ brand }}{% endblock %}
+
+{% block container_class %}container d-flex align-items-center justify-content-center min-vh-100 px-3{% endblock %}
+
+{% block content %}
+<div class="auth-card card shadow-sm">
+    <div class="card-body p-4">
+        <div class="app-brand d-flex align-items-center gap-2 fw-semibold fs-5 mb-1">
+            <span class="brand-dot"></span>{{ brand }}
+        </div>
+        <p class="text-body-secondary small mb-4">Log ind for at fortsætte.</p>
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <button class="btn btn-primary w-100">Log ind</button>
+        </form>
+
+        <p class="small text-body-secondary mt-4 mb-0">
+            Har du ikke en konto? Konti oprettes ved invitation — kontakt
+            administratoren i din organisation.
+        </p>
+    </div>
+</div>
+{% endblock %}

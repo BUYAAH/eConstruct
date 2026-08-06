@@ -51,7 +51,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'accounts.middleware.ReauthRequiredMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -127,7 +126,10 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Note photos live here; served only through the login-protected note_photo view.
+# Uploaded drawings and note photos live here. Nothing under MEDIA_ROOT is
+# served directly — every file goes through a login- and organization-checked
+# view, because one organization must never reach another's files.
+# Swapping this for S3 later is a STORAGES change, not a model change.
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Product name shown to users. Deliberately the ONLY place it is spelled out —
@@ -142,12 +144,25 @@ LOGIN_URL = "accounts:login"
 
 LOGIN_REDIRECT_URL = "/"
 
-# Microsoft Entra ID / Graph (multi-tenant app registration)
-MS_CLIENT_ID = os.environ.get("MS_CLIENT_ID", "")
-MS_CLIENT_SECRET = os.environ.get("MS_CLIENT_SECRET", "")
-MS_REDIRECT_URI = os.environ.get("MS_REDIRECT_URI", "http://localhost:8000/auth/callback/")
-MS_AUTHORITY = "https://login.microsoftonline.com/common"
-GRAPH_SCOPES = ["User.Read", "Files.Read.All", "Files.ReadWrite.All", "Sites.Read.All"]
+LOGOUT_REDIRECT_URL = "accounts:login"
 
-# Fernet key for encrypting MSAL token caches at rest
-TOKEN_ENC_KEY = os.environ.get("TOKEN_ENC_KEY", "")
+# Field workers are on phones on a scaffold — re-authenticating mid-shift is
+# the kind of friction that gets an app abandoned. Sessions last 30 days and
+# slide forward on every request.
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
+SESSION_SAVE_EVERY_REQUEST = True
+
+# Invitations are emailed. Console backend prints them to the terminal in
+# development; set EMAIL_HOST etc. in .env for a real server.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@localhost")
+
+# Absolute base for links inside invitation emails (no request context there).
+SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")

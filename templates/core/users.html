@@ -4,15 +4,28 @@
 {% block page_title %}Brugere{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">{{ user.company.name }}</div>
-    <ul class="list-group list-group-flush">
-        {% for u in users %}
-        {% include "core/partials/user_row.html" %}
-        {% endfor %}
-    </ul>
-    <div class="card-footer small text-body-secondary">
-        Nye kolleger dukker op her automatisk efter deres første Microsoft-login.
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="card">
+            <div class="card-header">{{ user.organization.name }}</div>
+            <ul class="list-group list-group-flush">
+                {% for u in users %}
+                {% include "core/partials/user_row.html" %}
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="card">
+            <div class="card-header">Invitationer</div>
+            <div class="card-body p-3" id="invitations-section">
+                {% include "core/partials/invitations_section.html" %}
+            </div>
+            <div class="card-footer small text-body-secondary">
+                Den inviterede vælger selv sin adgangskode. Linket udløber efter 14 dage.
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -92,10 +92,11 @@ Additive where possible; `Note` and `Document` are the two that genuinely
 change shape.
 
 ```
-Company            unchanged (ms_tenant_id becomes dead — drop in phase 6)
-User               unchanged (ms_object_id + MsToken die in phase 1)
+Organization       Company, renamed (D6). The tenant boundary.
+                   ms_tenant_id dropped.
+User               unchanged minus Microsoft (ms_object_id + MsToken die).
 
-Project            NEW. company, name, slug, case_no, address, status,
+Project            NEW. organization, name, slug, case_no, address, status,
                    manager -> User, members -> M2M User, created/updated.
                    Fields are lifted straight from _DEMO_PROJECTS so the
                    existing template keeps working.
@@ -103,8 +104,9 @@ Project            NEW. company, name, slug, case_no, address, status,
 Drawing            REPLACES Document. project, name, file (FileField),
                    page_count, uploaded_by, created. No drive_id/item_id.
 
-Discipline         Layer, renamed and re-scoped (see decision D2).
-                   company, name, color, sort_order.
+Discipline         Layer, renamed (D2). Faggruppe: Konstruktion, Brand,
+                   El, VVS, Kvalitet. organization, name, color,
+                   sort_order.
 
 Registration       EVOLVES Note. project, drawing (nullable), page_number,
                    x_pct, y_pct, discipline, text, author, assignee,
@@ -133,9 +135,30 @@ Two shape notes:
 Ordered by dependency, not by appeal. Phase 1 is not optional — until it's
 done, the app has no working front door.
 
-### Phase 1 — Local auth (unblocks everything)
+### Phase 1 — Local auth (unblocks everything) — ✅ DONE 2026-08-06
 
-The whole login path is Microsoft. Replace it:
+Built together with phase 3, because deleting the Graph code and giving the
+app its own front door were the same change. What landed:
+
+- Django `LoginView`/`LogoutView` on a styled Danish login page;
+  `OrgAuthenticationForm` in `accounts/forms.py`.
+- `Invitation` model + `accounts/emails.py`. An org admin invites from
+  `/users/`; the invitee gets a link, sets a password, and is logged
+  straight in. Tokens are `secrets.token_urlsafe(32)`, single-use, 14-day
+  expiry; a dead link renders one identical 410 page regardless of *why*
+  it's dead, since the token is the only credential.
+- Username **is** the email address, so an address belongs to exactly one
+  organization. Worth revisiting if someone ever works for two.
+- 30-day sliding sessions, so field workers don't re-authenticate mid-shift.
+- `manage.py seed_demo` creates an organization, five Danish disciplines, an
+  admin (`admin@demo.dk` / `demo1234`) and a first drawing — a fresh clone
+  is runnable without touching Django admin.
+- Deleted: `accounts/microsoft.py`, `accounts/middleware.py`, `core/graph.py`,
+  `MsToken`, `ms_object_id`, `ms_tenant_id`, all MSAL settings, the folder
+  picker/browse templates, and `msal`/`requests`/`cryptography` from
+  requirements.
+
+Original plan, for reference:
 
 - Django's `LoginView`/`LogoutView` with a styled template matching the
   dashboard shell. `AUTHENTICATION_BACKENDS` back to plain `ModelBackend`.
@@ -168,7 +191,25 @@ Turn the mock-up into real data with minimal template churn:
   `Registreringer`) becomes real HTMX tab loads instead of inert
   `<button>`s.
 
-### Phase 3 — Drawings (kills the Graph dependency)
+### Phase 3 — Drawings (kills the Graph dependency) — ✅ DONE 2026-08-06
+
+Landed with phase 1. `Document` became `Drawing` with a `FileField`;
+`FolderLink` is gone. Two things worth knowing:
+
+- **Django 6.0's `FileResponse` has no Range support** (verified against the
+  installed source, not assumed). PDF.js relies on ranges to show page 1 of
+  a large CAD drawing without downloading the whole file, and the old Graph
+  proxy passed them through — so `drawing_pdf` implements `Range` by hand:
+  206 with `Content-Range`, `bytes=-N` suffix ranges, and 416 when
+  unsatisfiable. All three are tested.
+- **Export is now a download, not an upload.** `pdf_export.stamp_notes` is
+  untouched (including the CAD coordinate fix); only its destination
+  changed, so the viewer's Eksportér dropdown became plain links.
+
+`Drawing` still belongs directly to the organization — phase 2 adds the
+`project` FK.
+
+Original plan, for reference:
 
 - `Drawing` model + upload form (multi-file, admin/PM only), page count read
   once on save via pypdf.
@@ -213,10 +254,11 @@ Ends with: upload a real drawing to a real project and pin notes on it.
 - **Postgres.** SQLite was chosen for a single-worker demo; a product with
   concurrent field writes shouldn't ship on it. Do this before deploying,
   not after.
-- Tests. Not 100% coverage — cover company-scoping (every view leaks
-  cross-company data if it's wrong), the permission decorators, and
-  `pdf_export`'s coordinate handling, which is subtle enough to regress
-  silently.
+- Tests. **Started early rather than deferred** — `core/tests.py` has 23
+  tests covering tenant isolation (org A cannot read, edit, delete or export
+  anything of org B's), the admin/member permission split, the invitation
+  lifecycle, and the Range handling. Still to cover: `pdf_export`'s
+  coordinate handling, which is subtle enough to regress silently.
 - Drop `Company.ms_tenant_id`, prune dead settings.
 - S3 via `django-storages` if drawings/photos justify it (`storage_plan.md`
   has the costing — the answer was "cheap, decide on product fit").
@@ -224,37 +266,39 @@ Ends with: upload a real drawing to a real project and pin notes on it.
   re-evaluate against a container host now that Postgres and background
   work are plausible.
 
-## 5. Decisions needed from Martin
+## 5. Decisions — all answered 2026-08-06
 
-Numbered so they can be answered by reference. **D1–D3 gate phases 1–4;
-D4–D6 can wait.**
+Kept with their reasoning so they don't get re-litigated.
 
-- **D1 — How do users get accounts?** Recommend admin-invites-by-email with
-  a set-password link: matches the B2B shape already in the code and avoids
-  open registration. Alternative is magic links (no passwords at all, nicer
-  on a phone, needs working outbound email either way).
-- **D2 — Is `Layer` the same thing as faggruppe?** `Layer` is per-company
-  name + colour + sort order; the demo registrations' `category` +
-  `color` (Konstruktion/Brand/El/VVS/Kvalitet) is *exactly* that shape.
-  Recommend renaming `Layer` → `Discipline` and having one concept. Say so
-  if Sales/Technicians-style audience layers are meant to survive
-  *alongside* trade groups — that's two models, not one.
-- **D3 — Can a registration exist without a drawing?** Recommend yes
-  (nullable). Affects phase 4's model and the viewer's role.
-- **D4 — Delete the Microsoft code or keep it dormant?** Recommend
-  deleting it in phase 1/3 and tagging commit `e685bd4` (e.g.
-  `git tag sharepoint-integration e685bd4`) so it's one command to
-  recover. Construction firms do live in SharePoint, so this may well come
-  back as an optional per-company integration — but half-wired dead code
-  in a product build costs more than a git tag does.
-- **D5 — The name.** Still `EzConstruct`, still flagged as a working title
-  (PLAN.md open question 4). One-line change in `settings.BRAND_NAME`.
-  Worth settling before anything user-facing ships.
-- **D6 — Multi-company or single?** Every query is company-scoped today. If
-  this is now one product for many customers, that's right and stays. If
-  it's being built for one firm, a lot of scoping could go — but
-  recommend keeping it, since removing it later is easy and adding it back
-  is not.
+- **D1 — How do users get accounts? → Invite by email.** An organization
+  admin invites an address; that creates an inactive user plus a signed,
+  expiring link where the invitee sets their own password. No open
+  registration, no self-signup.
+- **D2 — Is `Layer` the same as faggruppe? → Yes, one concept. Rename
+  `Layer` → `Discipline`.** Renaming rather than adding a parallel model:
+  because the migrations are being reset anyway (§7), the rename is a pure
+  find-and-replace with no migration risk *right now*, and expensive later.
+- **D3 — Can a registration exist without a drawing? → Yes.**
+  `Registration.drawing` is nullable.
+- **D4 — Microsoft code: delete or keep dormant? → Delete.** Commit
+  `e685bd4` is tagged **`sharepoint-integration`**, so the whole working
+  Graph/MSAL implementation is one `git checkout` away if SharePoint
+  returns as an optional per-organization integration.
+- **D5 — The name. → Deferred.** Stays `EzConstruct` for now; still a
+  working title, still a one-line change in `settings.BRAND_NAME`.
+- **D6 — Multi-tenant. → Yes, and strictly.** This is a SaaS: many
+  organizations, each **100% separated** from the others. The tenant model
+  is named **`Organization`** (not `Company` — the project cards already
+  use "Firmaer"/companies for the *subcontractors on a project*, a
+  different concept that keeps that word free).
+
+  **This makes scoping a correctness requirement, not a style choice.**
+  Every queryset that touches organization-owned data filters on
+  `request.user.organization`, and every object lookup by pk is scoped in
+  the same query (`get_object_or_404(Model, pk=pk, organization=...)`),
+  never fetched first and checked after. One missing filter is a
+  cross-tenant data leak, so this is the first thing that gets tests in
+  phase 6 — and the thing to check hardest in review.
 
 ## 6. What carries over unchanged
 

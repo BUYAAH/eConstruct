@@ -1,5 +1,6 @@
-<li class="list-group-item" id="layer-{{ layer.pk }}">
-    <form hx-post="{% url 'core:layer_edit' layer.pk %}" hx-target="#layers-section" hx-swap="innerHTML"
+<li class="list-group-item" id="discipline-{{ discipline.pk }}">
+    <form hx-post="{% url 'core:discipline_edit' discipline.pk %}"
+          hx-target="#disciplines-section" hx-swap="innerHTML"
           class="d-flex gap-2 align-items-start flex-wrap">
         {{ form.name }}
         {{ form.color }}

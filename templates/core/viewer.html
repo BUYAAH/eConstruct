@@ -1,23 +1,21 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{{ document.name }} — {{ brand }}{% endblock %}
+{% block title %}{{ drawing.name }} — {{ brand }}{% endblock %}
 
-{% block page_title %}{{ document.name }}{% endblock %}
+{% block page_title %}{{ drawing.name }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
-    <h1 class="h6 mb-0 text-truncate">📄 {{ document.name }}</h1>
-    {% if document.folder_link %}
-    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="{% url 'core:folder_detail' document.folder_link.pk %}">&larr; Tilbage</a>
-    {% endif %}
+    <h1 class="h6 mb-0 text-truncate">{{ drawing.name }}</h1>
+    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="{% url 'core:drawings' %}">&larr; Tegninger</a>
 </div>
 
 <div id="viewer-root"
      data-pdfjs="{% static 'vendor/pdfjs/pdf.min.mjs' %}"
      data-pdfjs-worker="{% static 'vendor/pdfjs/pdf.worker.min.mjs' %}"
-     data-pdf-url="{% url 'core:document_pdf' document.pk %}"
-     data-note-form-url="{% url 'core:note_new' document.pk %}">
+     data-pdf-url="{% url 'core:drawing_pdf' drawing.pk %}"
+     data-note-form-url="{% url 'core:note_new' drawing.pk %}">
 
     <div class="card mb-3">
         <div class="card-body py-2 px-2">
@@ -33,31 +31,27 @@
                 <button id="add-note-btn" class="btn btn-sm btn-primary px-3">+ Note</button>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-success dropdown-toggle px-3" data-bs-toggle="dropdown">
-                        <span id="export-spinner" class="spinner-border spinner-border-sm htmx-indicator me-1" role="status"></span>Eksportér
+                        Hent PDF
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        <li><button class="dropdown-item"
-                                hx-post="{% url 'core:export_document' document.pk 'summary' %}"
-                                hx-target="#export-result" hx-swap="innerHTML"
-                                hx-indicator="#export-spinner">
+                        <li><a class="dropdown-item"
+                               href="{% url 'core:export_drawing' drawing.pk 'summary' %}">
                             Nummererede nåle + oversigtsside
-                            <div class="small text-body-secondary">Kan læses overalt, også i SharePoint-forhåndsvisning</div>
-                        </button></li>
-                        <li><button class="dropdown-item"
-                                hx-post="{% url 'core:export_document' document.pk 'inline' %}"
-                                hx-target="#export-result" hx-swap="innerHTML"
-                                hx-indicator="#export-spinner">
+                            <div class="small text-body-secondary">Kan læses i enhver PDF-visning</div>
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'core:export_drawing' drawing.pk 'inline' %}">
                             Noter tegnet på siden
                             <div class="small text-body-secondary">Tekstbokse ved hver nål — bedst til få, korte noter</div>
-                        </button></li>
+                        </a></li>
                     </ul>
                 </div>
             </div>
             <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mt-2">
-                {% for layer in layers %}
-                <button class="btn btn-sm rounded-pill layer-chip active"
-                        style="--chip: {{ layer.color }};"
-                        data-layer="{{ layer.pk }}">{{ layer.name }}</button>
+                {% for discipline in disciplines %}
+                <button class="btn btn-sm rounded-pill discipline-chip active"
+                        style="--chip: {{ discipline.color }};"
+                        data-discipline="{{ discipline.pk }}">{{ discipline.name }}</button>
                 {% endfor %}
             </div>
             <p id="add-note-hint" class="text-center small text-primary d-none mb-0 mt-2">
@@ -70,13 +64,13 @@
 
     <div id="pdf-status" class="text-center text-body-secondary py-5">
         <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-        Henter PDF fra SharePoint…
+        Henter tegning…
     </div>
 
     <div id="page-wrap" class="position-relative mx-auto shadow d-none" style="touch-action: pan-x pan-y pinch-zoom;">
         <canvas id="pdf-canvas" class="d-block w-100"></canvas>
         <div id="pin-layer" class="position-absolute top-0 start-0 w-100 h-100"
-             hx-get="{% url 'core:pins' document.pk %}"
+             hx-get="{% url 'core:pins' drawing.pk %}"
              hx-trigger="micki:page-rendered from:body, micki:refresh-pins from:body"
              hx-vals='js:{page: window.mickiCurrentPage || 1}'
              hx-swap="innerHTML"></div>
@@ -85,7 +79,7 @@
     <div class="card mt-3">
         <div class="card-header">Noter</div>
         <div id="notes-list"
-             hx-get="{% url 'core:notes_list' document.pk %}"
+             hx-get="{% url 'core:notes_list' drawing.pk %}"
              hx-trigger="load, micki:refresh-pins from:body"
              hx-swap="innerHTML"></div>
     </div>

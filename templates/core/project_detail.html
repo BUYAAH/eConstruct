@@ -75,15 +75,17 @@ edge spacing = this padding + the row's own .75rem gutter.
         Hardcoded drawing for the mock-up. Becomes a real Document/drive item
         once the project model exists — only data-pdf-url has to change.
         {% endcomment %}
+        {% if preview_drawing %}
         <div class="card d-flex flex-column"
              data-pdf-preview
              data-pdfjs="{% static 'vendor/pdfjs/pdf.min.mjs' %}"
              data-pdfjs-worker="{% static 'vendor/pdfjs/pdf.worker.min.mjs' %}"
-             data-pdf-url="{% static 'img/3 - 1. ETAGE.pdf' %}">
+             data-pdf-url="{% url 'core:drawing_pdf' preview_drawing.pk %}">
 
             <div class="card-header d-flex align-items-center gap-2">
                 <svg class="app-icon flex-shrink-0"><use href="#i-drawings"></use></svg>
-                <span class="flex-grow-1 text-truncate">3 - 1. etage</span>
+                <a class="flex-grow-1 text-truncate text-decoration-none"
+                   href="{% url 'core:viewer' preview_drawing.pk %}">{{ preview_drawing.name }}</a>
                 <div class="btn-group btn-group-sm flex-shrink-0">
                     <button type="button" class="btn btn-outline-secondary px-2"
                             data-pdf-prev aria-label="Forrige side" disabled>&larr;</button>
@@ -102,6 +104,20 @@ edge spacing = this padding + the row's own .75rem gutter.
                 <canvas class="d-none" data-pdf-canvas></canvas>
             </div>
         </div>
+        {% else %}
+        <div class="card">
+            <div class="card-body text-center text-body-secondary py-5">
+                Ingen tegninger uploadet endnu.
+                {% if user.is_org_admin %}
+                <div class="mt-2">
+                    <a class="btn btn-sm btn-primary" href="{% url 'core:drawing_upload' %}">
+                        + Upload tegning
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         <div class="card">
             <div class="card-header">

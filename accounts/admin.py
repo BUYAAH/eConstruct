@@ -1,22 +1,21 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import MsToken, User
+from .models import Invitation, User
 
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("username", "email", "first_name", "last_name", "company", "is_company_admin", "is_active")
-    list_filter = ("company", "is_company_admin", "is_active")
+    list_display = ("username", "email", "first_name", "last_name", "organization", "is_org_admin", "is_active")
+    list_filter = ("organization", "is_org_admin", "is_active")
     fieldsets = UserAdmin.fieldsets + (
-        ("Micki", {"fields": ("company", "is_company_admin", "ms_object_id")}),
+        ("Organisation", {"fields": ("organization", "is_org_admin")}),
     )
 
 
-@admin.register(MsToken)
-class MsTokenAdmin(admin.ModelAdmin):
-    list_display = ("user", "updated_at")
-    readonly_fields = ("user", "updated_at")
-
-    def has_add_permission(self, request):
-        return False
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+    list_display = ("email", "organization", "as_org_admin", "invited_by", "created_at", "accepted_at")
+    list_filter = ("organization", "as_org_admin")
+    search_fields = ("email",)
+    readonly_fields = ("token", "created_at", "accepted_at")

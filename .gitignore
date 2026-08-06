@@ -18,3 +18,6 @@ venv/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Local dev database backup from the pre-pivot schema
+db.sqlite3.pre-pivot.bak

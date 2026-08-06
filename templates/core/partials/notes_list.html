@@ -5,11 +5,11 @@
         hx-get="{% url 'core:note_detail' note.pk %}"
         hx-target="#note-sheet-body" hx-swap="innerHTML">
         <span class="rounded-circle mt-1 flex-shrink-0"
-              style="width: .8rem; height: .8rem; background-color: {{ note.layer.color }};"></span>
+              style="width: .8rem; height: .8rem; background-color: {{ note.discipline.color }};"></span>
         <div class="flex-grow-1 min-width-0">
             <div>{{ note.text|truncatechars:140 }}</div>
             <div class="small text-body-secondary">
-                Side {{ note.page_number }} · {{ note.layer.name }} ·
+                Side {{ note.page_number }} · {{ note.discipline.name }} ·
                 {{ note.author|default:"(slettet bruger)" }} · {{ note.created_at|date:"j. b, H:i" }}
             </div>
         </div>

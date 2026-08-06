@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% comment %}
+Deliberately says nothing about *why* the link is dead — used, expired and
+belonging-to-a-closed-organization all land here, and the token is the only
+credential, so the page must not confirm anything about it.
+{% endcomment %}
+
+{% block title %}Linket virker ikke — {{ brand }}{% endblock %}
+
+{% block container_class %}container d-flex align-items-center justify-content-center min-vh-100 px-3{% endblock %}
+
+{% block content %}
+<div class="auth-card card shadow-sm">
+    <div class="card-body p-4 text-center">
+        <div class="app-brand d-flex align-items-center justify-content-center gap-2 fw-semibold fs-5 mb-3">
+            <span class="brand-dot"></span>{{ brand }}
+        </div>
+        <h1 class="h6">Invitationen kan ikke bruges</h1>
+        <p class="text-body-secondary small mb-4">
+            Linket er enten brugt eller udløbet. Bed administratoren i din
+            organisation om at sende en ny invitation.
+        </p>
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'accounts:login' %}">Til login</a>
+    </div>
+</div>
+{% endblock %}

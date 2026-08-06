@@ -1,7 +1,7 @@
 {% for note in notes %}
 <button class="pin"
-        style="left: {{ note.x_pct }}%; top: {{ note.y_pct }}%; --pin-color: {{ note.layer.color }};"
-        data-layer="{{ note.layer_id }}"
+        style="left: {{ note.x_pct }}%; top: {{ note.y_pct }}%; --pin-color: {{ note.discipline.color }};"
+        data-discipline="{{ note.discipline_id }}"
         hx-get="{% url 'core:note_detail' note.pk %}"
         hx-target="#note-sheet-body" hx-swap="innerHTML"
         aria-label="Note: {{ note.text|truncatechars:60 }}"></button>

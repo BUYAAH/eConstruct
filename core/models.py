@@ -2,27 +2,37 @@ from django.conf import settings
 from django.db import models
 
 
-class Company(models.Model):
-    """A customer organisation. Created manually in Django admin for v0.1."""
+class Organization(models.Model):
+    """A customer tenant. Every other model here hangs off exactly one.
+
+    This is the isolation boundary: organizations are 100% separated from
+    each other, so every queryset touching the models below must filter on
+    the requesting user's organization. See ROADMAP.md decision D6.
+
+    Named Organization rather than Company because "firma"/company is
+    already taken in this domain by the subcontractors working on a
+    project ("Firmaer" on the project cards).
+    """
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
-    # Entra tenant id; set when known so SSO can match new users to the company.
-    ms_tenant_id = models.CharField(max_length=64, unique=True, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name_plural = "companies"
 
     def __str__(self):
         return self.name
 
 
-class Layer(models.Model):
-    """A note audience (e.g. Sales, Technicians), defined per company."""
+class Discipline(models.Model):
+    """A trade group (faggruppe) — Konstruktion, Brand, El, VVS, Kvalitet.
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="layers")
+    Defined per organization; the colour is what tints a note's pin on the
+    drawing and its dot in the registration list.
+    """
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="disciplines"
+    )
     name = models.CharField(max_length=100)
     color = models.CharField(max_length=7, default="#0d6efd")
     sort_order = models.PositiveSmallIntegerField(default=0)
@@ -30,74 +40,62 @@ class Layer(models.Model):
     class Meta:
         ordering = ["sort_order", "name"]
         constraints = [
-            models.UniqueConstraint(fields=["company", "name"], name="unique_layer_name_per_company"),
+            models.UniqueConstraint(
+                fields=["organization", "name"], name="unique_discipline_name_per_org"
+            ),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.company})"
+        return f"{self.name} ({self.organization})"
 
 
-class FolderLink(models.Model):
-    """A SharePoint folder a company admin selected for annotation."""
+class Drawing(models.Model):
+    """An uploaded PDF drawing that notes get pinned to.
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="folder_links")
-    drive_id = models.CharField(max_length=255)
-    item_id = models.CharField(max_length=255)
-    display_path = models.CharField(max_length=500)
-    added_by = models.ForeignKey(
+    Replaces the pitch-era Document, which was a pointer at a SharePoint
+    item (drive_id/item_id) rather than a file we hold. We now own the
+    bytes, so `file` is a plain FileField: local disk today, S3 later via
+    the STORAGES setting with no model change (see storage_plan.md).
+
+    Gets a `project` FK in phase 2 — until Project exists it belongs
+    directly to the organization.
+    """
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="drawings"
+    )
+    name = models.CharField(max_length=500)
+    file = models.FileField(upload_to="drawings/%Y/%m/")
+    # Read once with pypdf on upload so the viewer doesn't reparse per request.
+    page_count = models.PositiveIntegerField(default=0)
+    uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["company", "drive_id", "item_id"], name="unique_folder_per_company"),
-        ]
-
-    def __str__(self):
-        return self.display_path
-
-
-class Document(models.Model):
-    """Registry row for a SharePoint PDF, created on first open.
-
-    Anchors notes to the file's stable (drive_id, item_id) identity.
-    No file contents are stored.
-    """
-
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="documents")
-    folder_link = models.ForeignKey(
-        FolderLink, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents"
-    )
-    drive_id = models.CharField(max_length=255)
-    item_id = models.CharField(max_length=255)
-    name = models.CharField(max_length=500)
-    etag = models.CharField(max_length=255, blank=True)
-    # Set when the file can no longer be found in SharePoint; notes are kept.
-    is_missing = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["company", "drive_id", "item_id"], name="unique_document_per_company"),
-        ]
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
 
 
 class Note(models.Model):
-    """A pin-note on a document page, targeted at one layer.
+    """A pin-note on a drawing page, tagged with one discipline.
 
     Coordinates are percentages of the rendered page (origin top-left),
     so pins are zoom- and device-independent.
+
+    Becomes Registration in phase 4, when it gains assignee, deadline and
+    open/resolved status — that rename is deferred because it comes with
+    those fields, unlike the Organization/Discipline renames.
     """
 
-    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="notes")
+    drawing = models.ForeignKey(Drawing, on_delete=models.CASCADE, related_name="notes")
     page_number = models.PositiveIntegerField()
     x_pct = models.DecimalField(max_digits=6, decimal_places=3)
     y_pct = models.DecimalField(max_digits=6, decimal_places=3)
-    layer = models.ForeignKey(Layer, on_delete=models.PROTECT, related_name="notes")
+    discipline = models.ForeignKey(Discipline, on_delete=models.PROTECT, related_name="notes")
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="notes"
     )
@@ -111,4 +109,4 @@ class Note(models.Model):
         ordering = ["page_number", "created_at"]
 
     def __str__(self):
-        return f"p{self.page_number} on {self.document}: {self.text[:40]}"
+        return f"p{self.page_number} on {self.drawing}: {self.text[:40]}"

@@ -1,5 +1,5 @@
 <div class="mb-2">
-    <span class="badge" style="background-color: {{ note.layer.color }};">{{ note.layer.name }}</span>
+    <span class="badge" style="background-color: {{ note.discipline.color }};">{{ note.discipline.name }}</span>
     <div class="small text-body-secondary mt-1">
         {{ note.author|default:"(slettet bruger)" }} · {{ note.created_at|date:"j. F Y, H:i" }}
     </div>

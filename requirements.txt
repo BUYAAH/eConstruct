@@ -1,8 +1,5 @@
 Django>=6.0,<6.1
-msal
-requests
-python-dotenv
-cryptography
-pypdf
-reportlab
-Pillow
+python-dotenv   # local .env loading
+pypdf           # page counts + note stamping
+reportlab       # drawing the note overlays
+Pillow          # photo downscale / EXIF handling

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Upload tegning — {{ brand }}{% endblock %}
+
+{% block topbar_title %}
+<nav aria-label="Brødkrumme" class="min-width-0">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:drawings' %}">Tegninger</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Upload</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 32rem;">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary">Upload</button>
+                <a class="btn btn-outline-secondary" href="{% url 'core:drawings' %}">Annullér</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

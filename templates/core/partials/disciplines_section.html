@@ -1,12 +1,14 @@
 <ul class="list-group list-group-flush mb-2">
-    {% for layer in layers %}
-    {% include "core/partials/layer_row.html" %}
+    {% for discipline in disciplines %}
+    {% include "core/partials/discipline_row.html" %}
     {% empty %}
-    <li class="list-group-item text-body-secondary small">Ingen lag endnu — noter kræver mindst ét.</li>
+    <li class="list-group-item text-body-secondary small">
+        Ingen faggrupper endnu — noter kræver mindst én.
+    </li>
     {% endfor %}
 </ul>
 
-<form hx-post="{% url 'core:layer_create' %}" hx-target="#layers-section" hx-swap="innerHTML"
+<form hx-post="{% url 'core:discipline_create' %}" hx-target="#disciplines-section" hx-swap="innerHTML"
       class="d-flex gap-2 align-items-start px-2 pb-1">
     {{ form.name }}
     {{ form.color }}

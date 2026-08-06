@@ -1,0 +1,13 @@
+<li class="list-group-item d-flex align-items-center gap-2" id="discipline-{{ discipline.pk }}">
+    <span class="rounded-circle d-inline-block flex-shrink-0"
+          style="width: 1rem; height: 1rem; background-color: {{ discipline.color }};"></span>
+    <span class="flex-grow-1">{{ discipline.name }}</span>
+    {% if error %}<span class="small text-danger">{{ error }}</span>{% endif %}
+    <button class="btn btn-sm btn-outline-secondary"
+            hx-get="{% url 'core:discipline_edit' discipline.pk %}"
+            hx-target="#discipline-{{ discipline.pk }}" hx-swap="outerHTML">Redigér</button>
+    <button class="btn btn-sm btn-outline-danger"
+            hx-post="{% url 'core:discipline_delete' discipline.pk %}"
+            hx-target="#disciplines-section" hx-swap="innerHTML"
+            hx-confirm="Slet faggruppen '{{ discipline.name }}'?">Slet</button>
+</li>

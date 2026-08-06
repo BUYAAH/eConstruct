@@ -1,39 +1,52 @@
+import json
+import re
+import uuid
 from datetime import timedelta
 from functools import wraps
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.utils import timezone
-from django.http import Http404, HttpResponseForbidden, StreamingHttpResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-import json
-import uuid
+from accounts.emails import send_invitation
+from accounts.forms import InvitationForm
+from accounts.models import Invitation
 
-from django.contrib.auth import get_user_model
-from django.http import FileResponse
-
-from . import graph
-from .forms import LayerForm, NoteForm
+from .forms import DisciplineForm, DrawingUploadForm, NoteForm
 from .images import process_upload
-from .models import Document, FolderLink, Layer, Note
+from .models import Discipline, Drawing, Note
 from .pdf_export import stamp_notes
 
 
-def company_admin_required(view):
+def org_admin_required(view):
     @wraps(view)
     @login_required
     def wrapper(request, *args, **kwargs):
-        if not request.user.is_company_admin:
+        if not request.user.is_org_admin:
             return HttpResponseForbidden("Kræver administratoradgang.")
         return view(request, *args, **kwargs)
 
     return wrapper
 
 
+# Every organization-owned queryset below goes through one of these, so the
+# tenant filter is never something an individual view has to remember.
+# Organizations are 100% separated (ROADMAP.md D6) — a missing filter here is
+# a cross-tenant leak, not a cosmetic bug.
+def _drawings(request):
+    return Drawing.objects.filter(organization=request.user.organization)
+
+
+def _notes(request):
+    return Note.objects.filter(drawing__organization=request.user.organization)
+
+
 @login_required
 def overview(request):
-    """Landing page. Gets KPI tiles + recent activity later; placeholder for now."""
+    """Landing page. Gets KPI tiles + recent activity in phase 5."""
     return render(request, "core/placeholder.html", {"heading": "Oversigt", "icon": "i-overview"})
 
 
@@ -52,7 +65,7 @@ def reports(request):
 # Stand-in for the Project model that doesn't exist yet, so we can agree on
 # the Projekter layout before building it. `updated` is relative to now so the
 # demo never goes stale. Templates read only from these dicts — wiring a real
-# queryset later should be a view-only change.
+# queryset in phase 2 should be a view-only change.
 _DEMO_PROJECTS = [
     {
         "slug": "sygehus-nord",
@@ -113,8 +126,9 @@ def _demo_projects():
     return [{**p, "updated": now - p["updated_delta"]} for p in _DEMO_PROJECTS]
 
 
-# Shaped after the real Note rows (layer + author + page + optional photo),
-# with construction-realistic content instead of the tenant's test notes.
+# Shaped after the real Note rows (discipline + author + page + optional
+# photo) with construction-realistic content. Becomes a Registration queryset
+# in phase 4.
 _DEMO_REGISTRATIONS = [
     {
         "text": "Revne i betonvæg ved akse D/4",
@@ -215,229 +229,296 @@ def projects(request):
 
 @login_required
 def project_detail(request, slug):
-    """Stub — the layout for a single project is the next thing to design."""
     project = next((p for p in _demo_projects() if p["slug"] == slug), None)
     if project is None:
         raise Http404("Ukendt projekt")
     return render(
         request,
         "core/project_detail.html",
-        {"project": project, "registrations": _demo_registrations()},
+        {
+            "project": project,
+            "registrations": _demo_registrations(),
+            # The inline preview shows a real uploaded drawing when there is
+            # one; the template falls back to an empty state otherwise.
+            "preview_drawing": _drawings(request).first(),
+        },
     )
 
 
+# --- Drawings ----------------------------------------------------------------
+
+
 @login_required
-def folders(request):
-    folder_links = request.user.company.folder_links.all() if request.user.company else []
-    return render(request, "core/folders.html", {"folder_links": folder_links})
+def drawings(request):
+    return render(request, "core/drawings.html", {"drawings": _drawings(request)})
 
 
-# --- Folder picking (admin) -------------------------------------------------
+@org_admin_required
+def drawing_upload(request):
+    if request.method == "POST":
+        form = DrawingUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            drawing = form.save(commit=False)
+            drawing.organization = request.user.organization
+            drawing.uploaded_by = request.user
+            if not drawing.name:
+                drawing.name = request.FILES["file"].name.rsplit(".", 1)[0]
+            drawing.save()
+            drawing.page_count = _count_pages(drawing)
+            drawing.save(update_fields=["page_count"])
+            return redirect("core:drawings")
+    else:
+        form = DrawingUploadForm()
+    return render(request, "core/drawing_upload.html", {"form": form})
 
 
-@company_admin_required
-def folder_picker(request):
-    return render(request, "core/folder_picker.html")
-
-
-@company_admin_required
-def browse(request):
-    """HTMX partial: drill down sites -> document libraries -> folders."""
-    site_id = request.GET.get("site_id")
-    drive_id = request.GET.get("drive_id")
-    item_id = request.GET.get("item_id", "root")
-    path = request.GET.get("path", "")
+def _count_pages(drawing):
+    """Read the page count once at upload so the viewer needn't reparse."""
+    from pypdf import PdfReader
 
     try:
-        if drive_id:
-            items = graph.list_children(request.user, drive_id, item_id)
-            folders = [i for i in items if "folder" in i]
-            pdf_count = sum(
-                1 for i in items if "file" in i and i["name"].lower().endswith(".pdf")
-            )
-            return render(
-                request,
-                "core/partials/browse_folders.html",
-                {
-                    "folders": folders,
-                    "pdf_count": pdf_count,
-                    "drive_id": drive_id,
-                    "item_id": item_id,
-                    "path": path,
-                },
-            )
-        if site_id:
-            drives = graph.list_drives(request.user, site_id)
-            return render(
-                request, "core/partials/browse_drives.html", {"drives": drives, "path": path}
-            )
-        sites = graph.list_sites(request.user)
-        return render(request, "core/partials/browse_sites.html", {"sites": sites})
-    except graph.GraphError as e:
-        return render(request, "core/partials/graph_error.html", {"error": e}, status=200)
+        with drawing.file.open("rb") as fh:
+            return len(PdfReader(fh).pages)
+    except Exception:
+        # A file PdfReader can't parse still uploads; the viewer will show the
+        # error. Better than losing the upload over a page count.
+        return 0
 
 
-@company_admin_required
+@org_admin_required
 @require_POST
-def link_folder(request):
-    drive_id = request.POST["drive_id"]
-    item_id = request.POST["item_id"]
-    display_path = request.POST["display_path"]
-
-    # "root" is an alias, not a stable id — resolve it before storing.
-    if item_id == "root":
-        item_id = graph.get_item(request.user, drive_id)["id"]
-
-    FolderLink.objects.get_or_create(
-        company=request.user.company,
-        drive_id=drive_id,
-        item_id=item_id,
-        defaults={"display_path": display_path, "added_by": request.user},
-    )
-    return redirect("core:folders")
-
-
-@company_admin_required
-@require_POST
-def unlink_folder(request, pk):
-    link = get_object_or_404(FolderLink, pk=pk, company=request.user.company)
-    link.delete()
-    return redirect("core:folders")
-
-
-# --- Document browsing (members) --------------------------------------------
-
-
-@login_required
-def folder_detail(request, pk):
-    """List a linked folder's contents; navigate subfolders via ?item_id."""
-    link = get_object_or_404(FolderLink, pk=pk, company=request.user.company)
-    item_id = request.GET.get("item_id", link.item_id)
-
-    context = {"link": link, "item_id": item_id, "at_root": item_id == link.item_id}
-    try:
-        items = graph.list_children(request.user, link.drive_id, item_id)
-        context["folders"] = [i for i in items if "folder" in i]
-        context["pdfs"] = [
-            i for i in items if "file" in i and i["name"].lower().endswith(".pdf")
-        ]
-    except graph.GraphError as e:
-        context["graph_error"] = e
-
-    template = (
-        "core/partials/folder_items.html" if request.headers.get("HX-Request") else "core/folder_detail.html"
-    )
-    return render(request, template, context)
-
-
-@login_required
-def open_document(request, pk, item_id):
-    """Get-or-create the Document registry row for a PDF, then open the viewer."""
-    link = get_object_or_404(FolderLink, pk=pk, company=request.user.company)
-    try:
-        item = graph.get_item(request.user, link.drive_id, item_id)
-    except graph.GraphError:
-        return render(request, "core/document_missing.html", status=404)
-
-    document, _ = Document.objects.get_or_create(
-        company=request.user.company,
-        drive_id=link.drive_id,
-        item_id=item["id"],
-        defaults={"folder_link": link, "name": item["name"], "etag": item.get("eTag", "")},
-    )
-    if document.name != item["name"] or document.is_missing:
-        document.name = item["name"]
-        document.is_missing = False
-        document.save()
-    return redirect("core:viewer", pk=document.pk)
+def drawing_delete(request, pk):
+    drawing = get_object_or_404(_drawings(request), pk=pk)
+    drawing.file.delete(save=False)
+    drawing.delete()
+    return redirect("core:drawings")
 
 
 @login_required
 def viewer(request, pk):
-    document = get_object_or_404(Document, pk=pk, company=request.user.company)
-    layers = request.user.company.layers.all()
-    return render(request, "core/viewer.html", {"document": document, "layers": layers})
-
-
-# --- Company management (admins) ---------------------------------------------
-
-
-def _layers_section(request, form=None):
+    drawing = get_object_or_404(_drawings(request), pk=pk)
     return render(
         request,
-        "core/partials/layers_section.html",
-        {"layers": request.user.company.layers.all(), "form": form or LayerForm()},
+        "core/viewer.html",
+        {"drawing": drawing, "disciplines": request.user.organization.disciplines.all()},
     )
 
 
-@company_admin_required
+_RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
+
+
+@login_required
+def drawing_pdf(request, pk):
+    """Serve the PDF bytes, login- and organization-checked.
+
+    Range support is implemented by hand: Django 6.0's FileResponse doesn't
+    do it, and PDF.js relies on it to fetch large CAD drawings in chunks
+    rather than downloading the whole file before showing page 1 — which
+    matters on a phone, the primary device.
+    """
+    drawing = get_object_or_404(_drawings(request), pk=pk)
+    try:
+        size = drawing.file.size
+    except (FileNotFoundError, ValueError):
+        raise Http404("Tegningen findes ikke længere på serveren.")
+
+    match = _RANGE_RE.match(request.headers.get("Range", ""))
+    if not match:
+        response = FileResponse(drawing.file.open("rb"), content_type="application/pdf")
+        response["Accept-Ranges"] = "bytes"
+        return response
+
+    start_raw, end_raw = match.groups()
+    if start_raw:
+        start = int(start_raw)
+        end = int(end_raw) if end_raw else size - 1
+    else:
+        # "bytes=-N" means the final N bytes.
+        start = max(size - int(end_raw), 0) if end_raw else 0
+        end = size - 1
+    end = min(end, size - 1)
+
+    if start > end or start >= size:
+        response = HttpResponse(status=416)
+        response["Content-Range"] = f"bytes */{size}"
+        return response
+
+    with drawing.file.open("rb") as fh:
+        fh.seek(start)
+        chunk = fh.read(end - start + 1)
+
+    response = HttpResponse(chunk, status=206, content_type="application/pdf")
+    response["Content-Range"] = f"bytes {start}-{end}/{size}"
+    response["Content-Length"] = str(len(chunk))
+    response["Accept-Ranges"] = "bytes"
+    return response
+
+
+EXPORT_MODES = {"summary": "kommenteret", "inline": "noter i tekst"}
+
+
+@login_required
+def export_drawing(request, pk, mode):
+    """Stamp all notes into the PDF and hand it back as a download.
+
+    Pre-pivot this uploaded the result back into SharePoint; the stamping
+    itself (including the CAD non-zero-origin page fix) is unchanged.
+    """
+    if mode not in EXPORT_MODES:
+        raise Http404
+    drawing = get_object_or_404(_drawings(request), pk=pk)
+    notes = drawing.notes.select_related("discipline", "author").all()
+
+    with drawing.file.open("rb") as fh:
+        stamped = stamp_notes(fh.read(), notes, mode=mode, document_name=drawing.name)
+
+    filename = f"{drawing.name} ({EXPORT_MODES[mode]}).pdf"
+    response = HttpResponse(stamped, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+# --- Organization management (admins) ----------------------------------------
+
+
+def _disciplines_section(request, form=None):
+    return render(
+        request,
+        "core/partials/disciplines_section.html",
+        {
+            "disciplines": request.user.organization.disciplines.all(),
+            "form": form or DisciplineForm(),
+        },
+    )
+
+
+@org_admin_required
 def users(request):
-    company_users = request.user.company.users.order_by(
-        "-is_active", "-is_company_admin", "first_name"
+    org = request.user.organization
+    return render(
+        request,
+        "core/users.html",
+        {
+            "users": org.users.order_by("-is_active", "-is_org_admin", "first_name"),
+            "invitations": org.invitations.filter(accepted_at__isnull=True),
+            "form": InvitationForm(org),
+        },
     )
-    return render(request, "core/users.html", {"users": company_users})
 
 
-@company_admin_required
+@org_admin_required
+@require_POST
+def invite_create(request):
+    org = request.user.organization
+    form = InvitationForm(org, request.POST)
+    sent = False
+    if form.is_valid():
+        invitation = form.save(commit=False)
+        invitation.organization = org
+        invitation.invited_by = request.user
+        invitation.save()
+        send_invitation(invitation)
+        form = None
+        sent = True
+    return render(
+        request,
+        "core/partials/invitations_section.html",
+        {
+            "invitations": org.invitations.filter(accepted_at__isnull=True),
+            "form": form or InvitationForm(org),
+            "sent": sent,
+        },
+    )
+
+
+@org_admin_required
+@require_POST
+def invite_revoke(request, pk):
+    org = request.user.organization
+    get_object_or_404(Invitation, pk=pk, organization=org, accepted_at__isnull=True).delete()
+    return render(
+        request,
+        "core/partials/invitations_section.html",
+        {
+            "invitations": org.invitations.filter(accepted_at__isnull=True),
+            "form": InvitationForm(org),
+        },
+    )
+
+
+@org_admin_required
 def settings(request):
-    """Company settings — layers only, for now."""
+    """Organization settings — disciplines only, for now."""
     return render(
         request,
         "core/settings.html",
-        {"layers": request.user.company.layers.all(), "form": LayerForm()},
+        {"disciplines": request.user.organization.disciplines.all(), "form": DisciplineForm()},
     )
 
 
-@company_admin_required
+@org_admin_required
 @require_POST
-def layer_create(request):
-    form = LayerForm(request.POST)
+def discipline_create(request):
+    form = DisciplineForm(request.POST)
     if form.is_valid():
-        layer = form.save(commit=False)
-        layer.company = request.user.company
-        layer.save()
+        discipline = form.save(commit=False)
+        discipline.organization = request.user.organization
+        discipline.save()
         form = None
-    return _layers_section(request, form)
+    return _disciplines_section(request, form)
 
 
-@company_admin_required
-def layer_edit(request, pk):
-    layer = get_object_or_404(Layer, pk=pk, company=request.user.company)
+@org_admin_required
+def discipline_edit(request, pk):
+    discipline = get_object_or_404(
+        Discipline, pk=pk, organization=request.user.organization
+    )
     if request.method == "POST":
-        form = LayerForm(request.POST, instance=layer)
+        form = DisciplineForm(request.POST, instance=discipline)
         if form.is_valid():
             form.save()
-            return _layers_section(request)
+            return _disciplines_section(request)
     else:
-        form = LayerForm(instance=layer)
-    return render(request, "core/partials/layer_row_edit.html", {"layer": layer, "form": form})
+        form = DisciplineForm(instance=discipline)
+    return render(
+        request,
+        "core/partials/discipline_row_edit.html",
+        {"discipline": discipline, "form": form},
+    )
 
 
-@company_admin_required
+@org_admin_required
 @require_POST
-def layer_delete(request, pk):
-    layer = get_object_or_404(Layer, pk=pk, company=request.user.company)
-    if layer.notes.exists():
+def discipline_delete(request, pk):
+    discipline = get_object_or_404(
+        Discipline, pk=pk, organization=request.user.organization
+    )
+    if discipline.notes.exists():
         return render(
             request,
-            "core/partials/layer_row.html",
-            {"layer": layer, "error": f"In use by {layer.notes.count()} note(s) — can't delete."},
+            "core/partials/discipline_row.html",
+            {
+                "discipline": discipline,
+                "error": f"Bruges af {discipline.notes.count()} note(r) — kan ikke slettes.",
+            },
         )
-    layer.delete()
-    return _layers_section(request)
+    discipline.delete()
+    return _disciplines_section(request)
 
 
-@company_admin_required
+@org_admin_required
 @require_POST
 def user_toggle(request, pk, field):
-    if field not in ("is_active", "is_company_admin"):
+    if field not in ("is_active", "is_org_admin"):
         raise Http404
-    target = get_object_or_404(get_user_model(), pk=pk, company=request.user.company)
+    target = get_object_or_404(
+        get_user_model(), pk=pk, organization=request.user.organization
+    )
     if target == request.user:
         return render(
             request,
             "core/partials/user_row.html",
-            {"u": target, "error": "You can't change your own access."},
+            {"u": target, "error": "Du kan ikke ændre din egen adgang."},
         )
     setattr(target, field, not getattr(target, field))
     target.save()
@@ -454,23 +535,23 @@ def _close_and_refresh(response):
 
 
 def _can_edit(user, note):
-    return note.author_id == user.id or user.is_company_admin
+    return note.author_id == user.id or user.is_org_admin
 
 
 @login_required
 def pins(request, pk):
-    """HTMX partial: all pins for one page of a document."""
-    document = get_object_or_404(Document, pk=pk, company=request.user.company)
+    """HTMX partial: all pins for one page of a drawing."""
+    drawing = get_object_or_404(_drawings(request), pk=pk)
     page = int(request.GET.get("page", 1))
-    notes = document.notes.filter(page_number=page).select_related("layer", "author")
+    notes = drawing.notes.filter(page_number=page).select_related("discipline", "author")
     return render(request, "core/partials/pins.html", {"notes": notes})
 
 
 @login_required
 def notes_list(request, pk):
-    """HTMX partial: every note on the document, grouped for the list below the viewer."""
-    document = get_object_or_404(Document, pk=pk, company=request.user.company)
-    notes = document.notes.select_related("layer", "author")
+    """HTMX partial: every note on the drawing, for the list below the viewer."""
+    drawing = get_object_or_404(_drawings(request), pk=pk)
+    notes = drawing.notes.select_related("discipline", "author")
     return render(request, "core/partials/notes_list.html", {"notes": notes})
 
 
@@ -482,12 +563,12 @@ def _attach_photo(note, request):
 
 @login_required
 def note_new(request, pk):
-    document = get_object_or_404(Document, pk=pk, company=request.user.company)
+    drawing = get_object_or_404(_drawings(request), pk=pk)
     if request.method == "POST":
-        form = NoteForm(request.user.company, request.POST, request.FILES)
+        form = NoteForm(request.user.organization, request.POST, request.FILES)
         if form.is_valid():
             note = form.save(commit=False)
-            note.document = document
+            note.drawing = drawing
             note.page_number = int(request.POST["page"])
             note.x_pct = request.POST["x"]
             note.y_pct = request.POST["y"]
@@ -496,7 +577,7 @@ def note_new(request, pk):
             note.save()
             return _close_and_refresh(render(request, "core/partials/note_saved.html"))
     else:
-        form = NoteForm(request.user.company)
+        form = NoteForm(request.user.organization)
     context = {
         "form": form,
         "action": request.path,
@@ -510,7 +591,7 @@ def note_new(request, pk):
 @login_required
 def note_detail(request, pk):
     note = get_object_or_404(
-        Note.objects.select_related("layer", "author"), pk=pk, document__company=request.user.company
+        _notes(request).select_related("discipline", "author"), pk=pk
     )
     return render(
         request,
@@ -521,24 +602,24 @@ def note_detail(request, pk):
 
 @login_required
 def note_edit(request, pk):
-    note = get_object_or_404(Note, pk=pk, document__company=request.user.company)
+    note = get_object_or_404(_notes(request), pk=pk)
     if not _can_edit(request.user, note):
         return HttpResponseForbidden()
     if request.method == "POST":
-        form = NoteForm(request.user.company, request.POST, request.FILES, instance=note)
+        form = NoteForm(request.user.organization, request.POST, request.FILES, instance=note)
         if form.is_valid():
             note = form.save(commit=False)
             _attach_photo(note, request)
             note.save()
             return _close_and_refresh(render(request, "core/partials/note_saved.html"))
     else:
-        form = NoteForm(request.user.company, instance=note)
+        form = NoteForm(request.user.organization, instance=note)
     return render(request, "core/partials/note_form.html", {"form": form, "action": request.path})
 
 
 @login_required
 def note_photo(request, pk):
-    note = get_object_or_404(Note, pk=pk, document__company=request.user.company)
+    note = get_object_or_404(_notes(request), pk=pk)
     if not note.photo:
         raise Http404
     return FileResponse(note.photo.open("rb"), content_type="image/jpeg")
@@ -547,67 +628,8 @@ def note_photo(request, pk):
 @login_required
 @require_POST
 def note_delete(request, pk):
-    note = get_object_or_404(Note, pk=pk, document__company=request.user.company)
+    note = get_object_or_404(_notes(request), pk=pk)
     if not _can_edit(request.user, note):
         return HttpResponseForbidden()
     note.delete()
     return _close_and_refresh(render(request, "core/partials/note_saved.html"))
-
-
-EXPORT_MODES = {"summary": "annotated", "inline": "inline notes"}
-
-
-@login_required
-@require_POST
-def export_document(request, pk, mode):
-    """Stamp all notes into the PDF and upload it next to the original in
-    SharePoint as '<name> (<suffix>).pdf' (replaced on re-export)."""
-    if mode not in EXPORT_MODES:
-        raise Http404
-    document = get_object_or_404(Document, pk=pk, company=request.user.company)
-    notes = document.notes.select_related("layer", "author").all()
-    try:
-        original = graph.stream_content(request.user, document.drive_id, document.item_id).content
-        stamped = stamp_notes(original, notes, mode=mode, document_name=document.name)
-        item = graph.get_item(request.user, document.drive_id, document.item_id)
-        parent_id = item["parentReference"]["id"]
-        stem = document.name[:-4] if document.name.lower().endswith(".pdf") else document.name
-        result = graph.upload_file(
-            request.user, document.drive_id, parent_id, f"{stem} ({EXPORT_MODES[mode]}).pdf", stamped
-        )
-    except graph.GraphError as e:
-        return render(request, "core/partials/export_result.html", {"error": e})
-    return render(
-        request,
-        "core/partials/export_result.html",
-        {"item": result, "note_count": len(notes)},
-    )
-
-
-@login_required
-def document_pdf(request, pk):
-    """Stream the PDF bytes from SharePoint through us, so the browser never
-    needs a Graph token. Range headers pass through for PDF.js chunking."""
-    document = get_object_or_404(Document, pk=pk, company=request.user.company)
-    try:
-        upstream = graph.stream_content(
-            request.user,
-            document.drive_id,
-            document.item_id,
-            range_header=request.headers.get("Range"),
-        )
-    except graph.GraphError as e:
-        if e.status_code == 404 and not document.is_missing:
-            document.is_missing = True
-            document.save()
-        raise Http404("PDF not available from SharePoint")
-
-    response = StreamingHttpResponse(
-        upstream.iter_content(chunk_size=64 * 1024),
-        content_type="application/pdf",
-        status=upstream.status_code,  # 200, or 206 for range responses
-    )
-    for header in ("Content-Length", "Content-Range", "Accept-Ranges"):
-        if header in upstream.headers:
-            response[header] = upstream.headers[header]
-    return response

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Tegninger — {{ brand }}{% endblock %}
+{% block page_title %}Tegninger{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+    <p class="text-body-secondary small mb-0">
+        PDF-tegninger som noter kan sættes på.
+    </p>
+    {% if user.is_org_admin %}
+    <a class="btn btn-sm btn-primary flex-shrink-0" href="{% url 'core:drawing_upload' %}">
+        + Upload tegning
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <ul class="list-group list-group-flush">
+        {% for drawing in drawings %}
+        <li class="list-group-item d-flex align-items-center gap-3">
+            <svg class="app-icon flex-shrink-0 text-body-secondary"><use href="#i-drawings"></use></svg>
+            <div class="flex-grow-1 min-width-0">
+                <a class="stretched-link text-decoration-none" href="{% url 'core:viewer' drawing.pk %}">
+                    {{ drawing.name }}
+                </a>
+                <div class="small text-body-secondary">
+                    {{ drawing.page_count }} side{{ drawing.page_count|pluralize:"r" }} ·
+                    {{ drawing.notes.count }} note{{ drawing.notes.count|pluralize:"r" }} ·
+                    {{ drawing.created_at|date:"j. b Y" }}
+                </div>
+            </div>
+            {% if user.is_org_admin %}
+            {% comment %}
+            position-relative lifts the button above the row's stretched-link
+            overlay, so Slet stays clickable.
+            {% endcomment %}
+            <form method="post" action="{% url 'core:drawing_delete' drawing.pk %}"
+                  class="position-relative flex-shrink-0">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger"
+                        onclick="return confirm('Slet tegningen &quot;{{ drawing.name|escapejs }}&quot; og alle dens noter?')">
+                    Slet
+                </button>
+            </form>
+            {% endif %}
+        </li>
+        {% empty %}
+        <li class="list-group-item text-center text-body-secondary py-5">
+            {% if user.is_org_admin %}
+            Ingen tegninger endnu — upload en PDF for at komme i gang.
+            {% else %}
+            Ingen tegninger endnu — bed din administrator om at uploade en.
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

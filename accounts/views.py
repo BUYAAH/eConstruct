@@ -1,74 +1,48 @@
-import msal
-from django.conf import settings
 from django.contrib.auth import get_user_model, login as auth_login
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from core.models import Company
-
-from .microsoft import build_msal_app, save_cache
+from .forms import AcceptInvitationForm
+from .models import Invitation
 
 User = get_user_model()
 
-SESSION_FLOW_KEY = "msal_auth_flow"
+# Login/logout are Django's own class-based views, wired in urls.py — only
+# the invite-acceptance flow needs custom handling.
 
 
-def login_view(request):
-    """Kick off the Microsoft auth-code flow (no local login page)."""
-    app = build_msal_app()
-    flow = app.initiate_auth_code_flow(
-        settings.GRAPH_SCOPES, redirect_uri=settings.MS_REDIRECT_URI
-    )
-    request.session[SESSION_FLOW_KEY] = flow
-    return redirect(flow["auth_uri"])
+def accept_invitation(request, token):
+    """Set a password against an emailed invitation and log straight in.
 
+    The token is the only credential, so an unusable one (already accepted,
+    or past its expiry) must not reveal anything about the invitation — it
+    renders the same dead-end page either way.
+    """
+    invitation = get_object_or_404(Invitation, token=token)
+    if not invitation.is_usable or not invitation.organization.is_active:
+        return render(request, "accounts/invitation_invalid.html", status=410)
 
-def callback(request):
-    flow = request.session.pop(SESSION_FLOW_KEY, None)
-    if flow is None:
-        return redirect("accounts:login")
-
-    cache = msal.SerializableTokenCache()
-    app = build_msal_app(cache)
-    try:
-        result = app.acquire_token_by_auth_code_flow(flow, request.GET.dict())
-    except ValueError:
-        return render(request, "accounts/login_error.html", status=400)
-    if "error" in result:
-        return render(
-            request,
-            "accounts/login_error.html",
-            {"error": result.get("error_description")},
-            status=400,
-        )
-
-    claims = result["id_token_claims"]
-    oid = claims["oid"]
-    tenant_id = claims["tid"]
-
-    user = User.objects.filter(ms_object_id=oid).first()
-    if user is None:
-        company = Company.objects.filter(ms_tenant_id=tenant_id, is_active=True).first()
-        if company is None:
-            return render(
-                request,
-                "accounts/no_company.html",
-                {"tenant_id": tenant_id},
-                status=403,
+    if request.method == "POST":
+        form = AcceptInvitationForm(request.POST)
+        if form.is_valid():
+            user = User.objects.create_user(
+                username=invitation.email,
+                email=invitation.email,
+                password=form.cleaned_data["password2"],
+                first_name=form.cleaned_data["first_name"],
+                last_name=form.cleaned_data["last_name"],
+                organization=invitation.organization,
+                is_org_admin=invitation.as_org_admin,
             )
-        email = claims.get("preferred_username", "")
-        name_parts = (claims.get("name") or "").split(" ", 1)
-        user = User.objects.create(
-            username=oid,
-            email=email,
-            first_name=name_parts[0],
-            last_name=name_parts[1] if len(name_parts) > 1 else "",
-            company=company,
-            ms_object_id=oid,
+            invitation.accepted_at = timezone.now()
+            invitation.save(update_fields=["accepted_at"])
+            auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            return redirect("core:overview")
+    else:
+        form = AcceptInvitationForm(
+            initial={"first_name": invitation.first_name, "last_name": invitation.last_name}
         )
 
-    if not user.is_active or user.company is None or not user.company.is_active:
-        return render(request, "accounts/no_company.html", status=403)
-
-    auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    save_cache(user, cache)
-    return redirect(settings.LOGIN_REDIRECT_URL)
+    return render(
+        request, "accounts/accept_invitation.html", {"form": form, "invitation": invitation}
+    )
