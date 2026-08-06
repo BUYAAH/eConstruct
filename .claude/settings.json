@@ -28,7 +28,29 @@
       "PowerShell($py = \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\"; & $py \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\micki\\\\manage.py\" check; if \\($?\\) { & $py \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\micki\\\\manage.py\" shell -c \"from django.urls import reverse; print\\(reverse\\('core:manage'\\), reverse\\('core:layer_create'\\), reverse\\('core:user_toggle', args=[1,'is_active']\\)\\)\" })",
       "PowerShell(& \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\" -m pip install --quiet Pillow)",
       "PowerShell(& \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\" -c \"import PIL; print\\('Pillow', PIL.__version__\\)\")",
-      "PowerShell($py = \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\"; $mng = \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\micki\\\\manage.py\"; & $py $mng makemigrations; if \\($?\\) { & $py $mng migrate; & $py $mng check })"
+      "PowerShell($py = \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\"; $mng = \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\micki\\\\manage.py\"; & $py $mng makemigrations; if \\($?\\) { & $py $mng migrate; & $py $mng check })",
+      "PowerShell($py = \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\"; & $py \"c:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\micki\\\\manage.py\" shell -c \\(Get-Content \"C:\\\\Users\\\\Marti\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Marti-Programming-django-micki-micki\\\\0f7e8b15-12b7-481d-a8a8-e9deda7ec215\\\\scratchpad\\\\smoke.py\" -Raw\\))",
+      "Bash(\"c:/Users/Marti/Programming/django/micki/venv/Scripts/python.exe\" manage.py shell)",
+      "Bash(\"c:/Users/Marti/Programming/django/micki/venv/Scripts/python.exe\" \"C:/Users/Marti/AppData/Local/Temp/claude/c--Users-Marti-Programming-django-micki-micki/0f7e8b15-12b7-481d-a8a8-e9deda7ec215/scratchpad/smoke.py\")",
+      "Bash(\"c:/Users/Marti/Programming/django/micki/venv/Scripts/python.exe\" \"C:/Users/Marti/AppData/Local/Temp/claude/c--Users-Marti-Programming-django-micki-micki/0f7e8b15-12b7-481d-a8a8-e9deda7ec215/scratchpad/smoke2.py\")",
+      "Bash(\"c:/Users/Marti/Programming/django/micki/venv/Scripts/python.exe\" manage.py runserver)",
+      "Bash(c:/Users/Marti/Programming/django/micki/venv/Scripts/python.exe -c ' *)",
+      "Bash(git mv *)",
+      "Bash(mv templates/core/projects.html templates/core/folders.html)",
+      "Bash(sed -i \"s/core:projects/core:folders/g; s/#i-projects/#i-folders/g\" templates/core/*.html templates/core/partials/*.html templates/partials/*.html)",
+      "Bash(sed -i 's/id=\"i-projects\"/id=\"i-folders\"/; s|#i-projects|#i-folders|' templates/partials/_icons.html)",
+      "Bash(python -)",
+      "Read(//c/Windows/Fonts//**)",
+      "Read(//c/Users/Marti/AppData/Local/Microsoft/Windows/**)",
+      "Bash(reg query *)",
+      "Bash(curl -s -m 15 -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\)\" \"https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}  %{content_type}  %{size_download} bytes\\\\n\" http://127.0.0.1:8000/static/vendor/fonts/ebgaramond/ebgaramond-latin-normal.woff2)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}  %{content_type}\\\\n\" http://127.0.0.1:8000/static/css/fonts.css)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}b  plexsans-latin-normal.woff2\\\\n\" http://127.0.0.1:8000/static/vendor/fonts/plexsans/plexsans-latin-normal.woff2)",
+      "Bash(curl -s http://127.0.0.1:8000/static/css/fonts.css)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}  %{content_type}  %{size_download} bytes\\\\n\" \"http://127.0.0.1:8000/static/img/3%20-%201.%20ETAGE.pdf\")",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

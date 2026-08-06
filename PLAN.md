@@ -15,7 +15,9 @@ without re-deriving context.
   expected. Prefer shipping over architecture. But the Microsoft/Graph
   integration is the part that must be *real* (decided in spec Q&A).
 - Mobile/tablet is the primary device. Test every template narrow-first.
-- Timezone/locale: Europe/Copenhagen, UI in English.
+- Timezone/locale: Europe/Copenhagen, `LANGUAGE_CODE = 'da-dk'`, **UI in Danish**
+  (changed 2026-07-27). Strings are hardcoded, not gettext. URL paths stay
+  English, same rule as the internal `micki:*` identifiers.
 
 ## Current status
 
@@ -80,6 +82,49 @@ without re-deriving context.
       (inline HTMX rows, delete blocked while notes use the layer) and
       user activate/deactivate + admin toggle (self-change blocked).
       Navbar "Manage" button for admins.
+- [x] Dashboard frontend built (2026-07-27, design agreed with Martin first):
+      `base.html` is now the shell — graphite sidebar (`#16202B`) + safety-amber
+      accent (`#F59E0B` on dark / `#B45309` on light, chosen so chrome never
+      competes with user-configured Layer pin colours). Bootstrap's
+      `--bs-primary` is repointed at the accent so existing `btn-primary`
+      markup inherited it without edits. Nav list lives once in
+      `templates/partials/_sidenav.html`, included twice (fixed rail ≥992px,
+      offcanvas below). Icons are an inline SVG sprite
+      (`templates/partials/_icons.html`), not emoji — emoji rendered
+      differently per device. Active nav comes from
+      `core/context_processors.nav`, keyed on `resolver_match.url_name`, so
+      views don't pass it.
+      **IA change:** `core:home` split into `core:overview` (`/`, placeholder
+      for future KPI tiles + recent activity) and `core:folders`
+      (`/folders/`, the linked-folder list, labelled **Mapper**; briefly
+      called Projekter on 2026-07-27 before Martin renamed it — the name
+      `projects` is deliberately left free for an actual project concept).
+      `/manage/` split into
+      `core:users` + `core:settings` and now 302s to `/users/`.
+      Registreringer/Rapporter are placeholders sharing
+      `core/placeholder.html`.
+- [x] Projekter mock-up (2026-07-27): `core:projects` at `/projects/` is the
+      **agreed target layout** for the coming project concept — three cards
+      with status badge, sagsnr + address, a Rapporter/Firmaer/Åbne-reg. stat
+      row, a progress bar and a manager + `timesince` footer. Data is a
+      hardcoded list of dicts in `core.views.projects`; the template reads
+      only from that list, so wiring a real Project model later is a
+      view-only change. Cards link to `core:project_detail`
+      (`/projects/<slug>/`) — a stub carrying only the project's name, status
+      and sagsnr; **designing that page is the next task**. **Mapper
+      (`core:folders`) is the interim home of the working folder/PDF flow and
+      is expected to be absorbed into Projekter** once that model exists.
+- [x] Typography (2026-07-27): **IBM Plex Sans**, vendored from Google Fonts
+      (OFL) in `static/vendor/fonts/plexsans/`, wired via `static/css/fonts.css`
+      + a `preload` hint in base.html. Chosen for a technical/engineering feel
+      and a tall x-height that survives a bright site tablet. **EB Garamond is
+      also vendored** (Martin wanted to see a serif) — switch between them by
+      editing `--app-font` in micki.css, nothing else. Delete
+      `static/vendor/fonts/ebgaramond/` + its four `@font-face` blocks once the
+      serif is ruled out. Gotchas learned: system Garamond ships only 400/700,
+      so weight 600 snapped to full bold and read "fat" — vendored variable
+      fonts fix that; and every component weight was stepped down one notch
+      (nav 500→400, card headers 600→500).
 - [ ] Step 7–8 (mobile polish pass, realistic demo data, deploy).
 
 ## Step 0 — Housekeeping (30 min)
@@ -231,10 +276,17 @@ Exact fields are in SPEC.md §4. Notes:
 1. Note taggable with multiple layers or exactly one? (Spec assumes one.)
 2. PythonAnywhere paid vs free account (see Step 8.1).
 3. Industry/content of the demo PDFs for the dev tenant.
-4. ~~App/product name~~ ANSWERED 2026-07-07: the product brand is
-   **ImagR** (user-facing strings only). Internal identifiers (repo name,
-   CSS file/classes, `micki:*` JS/HTMX event names) deliberately stay
-   "micki" — do not blanket-rename them.
+5. What actually goes on Oversigt (KPI tiles? recent activity feed?) and
+   what Registreringer / Rapporter mean as features — the sidebar entries
+   exist as placeholders, the concepts aren't specced yet.
+4. **App/product name — STILL OPEN.** Currently **EzConstruct** (set
+   2026-07-27, was ImagR, was Micki). Martin has flagged this is a working
+   title and a real name is still needed. It is spelled out in exactly one
+   place — `BRAND_NAME` in `config/settings.py`, surfaced to templates as
+   `{{ brand }}` by `core.context_processors.brand` — so the next rename is
+   a one-line change. Internal identifiers (repo name, CSS file/classes,
+   `micki:*` JS/HTMX event names) deliberately stay "micki" — do not
+   blanket-rename them.
 
 ## Gotchas already identified
 

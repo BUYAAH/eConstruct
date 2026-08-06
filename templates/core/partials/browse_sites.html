@@ -1,4 +1,4 @@
-<p class="text-body-secondary small mb-2">Choose a site:</p>
+<p class="text-body-secondary small mb-2">Vælg et websted:</p>
 <div class="list-group">
     {% for site in sites %}
     <button class="list-group-item list-group-item-action py-3"
@@ -7,6 +7,6 @@
         🌐 {{ site.displayName }}
     </button>
     {% empty %}
-    <p class="text-body-secondary">No SharePoint sites found for your account.</p>
+    <p class="text-body-secondary">Der blev ikke fundet nogen SharePoint-websteder til din konto.</p>
     {% endfor %}
 </div>

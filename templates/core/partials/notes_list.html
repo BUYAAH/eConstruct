@@ -9,8 +9,8 @@
         <div class="flex-grow-1 min-width-0">
             <div>{{ note.text|truncatechars:140 }}</div>
             <div class="small text-body-secondary">
-                Page {{ note.page_number }} · {{ note.layer.name }} ·
-                {{ note.author|default:"(removed user)" }} · {{ note.created_at|date:"j M, H:i" }}
+                Side {{ note.page_number }} · {{ note.layer.name }} ·
+                {{ note.author|default:"(slettet bruger)" }} · {{ note.created_at|date:"j. b, H:i" }}
             </div>
         </div>
         {% if note.photo %}
@@ -21,7 +21,7 @@
     </li>
     {% empty %}
     <li class="list-group-item text-center text-body-secondary py-4">
-        No notes yet — tap <strong>+ Note</strong>, then tap the page.
+        Ingen noter endnu — tryk <strong>+ Note</strong>, og tryk derefter på siden.
     </li>
     {% endfor %}
 </ul>

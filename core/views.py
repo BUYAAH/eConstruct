@@ -1,6 +1,8 @@
+from datetime import timedelta
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 from django.http import Http404, HttpResponseForbidden, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -23,16 +25,211 @@ def company_admin_required(view):
     @login_required
     def wrapper(request, *args, **kwargs):
         if not request.user.is_company_admin:
-            return HttpResponseForbidden("Company admin access required.")
+            return HttpResponseForbidden("Kræver administratoradgang.")
         return view(request, *args, **kwargs)
 
     return wrapper
 
 
 @login_required
-def home(request):
+def overview(request):
+    """Landing page. Gets KPI tiles + recent activity later; placeholder for now."""
+    return render(request, "core/placeholder.html", {"heading": "Oversigt", "icon": "i-overview"})
+
+
+@login_required
+def registrations(request):
+    return render(
+        request, "core/placeholder.html", {"heading": "Registreringer", "icon": "i-registrations"}
+    )
+
+
+@login_required
+def reports(request):
+    return render(request, "core/placeholder.html", {"heading": "Rapporter", "icon": "i-reports"})
+
+
+# Stand-in for the Project model that doesn't exist yet, so we can agree on
+# the Projekter layout before building it. `updated` is relative to now so the
+# demo never goes stale. Templates read only from these dicts — wiring a real
+# queryset later should be a view-only change.
+_DEMO_PROJECTS = [
+    {
+        "slug": "sygehus-nord",
+        "name": "Sygehus Nord",
+        "case_no": "2024-0417",
+        "address": "Hobrovej 18, 9000 Aalborg",
+        "status": "Aktiv",
+        "status_class": "success",
+        "drawings": 34,
+        "documents": 18,
+        "registrations": 23,
+        "reports": 12,
+        "companies": 4,
+        "open_registrations": 7,
+        "manager": "Lene Bak",
+        "progress": 62,
+        "updated_delta": timedelta(hours=3),
+    },
+    {
+        "slug": "hasserisvej-31",
+        "name": "Hasserisvej 31",
+        "case_no": "2024-0392",
+        "address": "Hasserisvej 31, 9000 Aalborg",
+        "status": "Aktiv",
+        "status_class": "success",
+        "drawings": 9,
+        "documents": 6,
+        "registrations": 11,
+        "reports": 5,
+        "companies": 2,
+        "open_registrations": 1,
+        "manager": "Jonas Overgaard",
+        "progress": 88,
+        "updated_delta": timedelta(days=2),
+    },
+    {
+        "slug": "vester-hassing-skole",
+        "name": "Vester Hassing Skole",
+        "case_no": "2023-1184",
+        "address": "Halvvejen 5, 9310 Vodskov",
+        "status": "Afsluttet",
+        "status_class": "secondary",
+        "drawings": 41,
+        "documents": 27,
+        "registrations": 56,
+        "reports": 21,
+        "companies": 5,
+        "open_registrations": 0,
+        "manager": "Mette Kjær",
+        "progress": 100,
+        "updated_delta": timedelta(days=34),
+    },
+]
+
+
+def _demo_projects():
+    now = timezone.now()
+    return [{**p, "updated": now - p["updated_delta"]} for p in _DEMO_PROJECTS]
+
+
+# Shaped after the real Note rows (layer + author + page + optional photo),
+# with construction-realistic content instead of the tenant's test notes.
+_DEMO_REGISTRATIONS = [
+    {
+        "text": "Revne i betonvæg ved akse D/4",
+        "category": "Konstruktion",
+        "color": "#dc3545",
+        "open": True,
+        "location": "3 - 1. etage · s. 1",
+        "assignee": "Jonas Overgaard",
+        "deadline_delta": timedelta(days=5),
+        "author": "Lene Bak",
+        "photo": True,
+        "created_delta": timedelta(hours=2),
+    },
+    {
+        "text": "Manglende brandtætning omkring rørgennemføring",
+        "category": "Brand",
+        "color": "#fd7e14",
+        "open": True,
+        "location": "3 - 1. etage · s. 1",
+        "assignee": "Søren Dahl",
+        "deadline_delta": timedelta(days=-1),
+        "author": "Jonas Overgaard",
+        "photo": True,
+        "created_delta": timedelta(hours=6),
+    },
+    {
+        "text": "El-dåse placeret forkert ift. tegning",
+        "category": "El",
+        "color": "#0d6efd",
+        "open": True,
+        "location": "3 - 1. etage · s. 2",
+        "assignee": "",
+        "deadline_delta": None,
+        "author": "Søren Dahl",
+        "photo": False,
+        "created_delta": timedelta(days=1),
+    },
+    {
+        "text": "Vandskade i loft ved teknikrum",
+        "category": "VVS",
+        "color": "#0dcaf0",
+        "open": True,
+        "location": "3 - 1. etage · s. 3",
+        "assignee": "Anders Precht",
+        "deadline_delta": timedelta(days=1),
+        "author": "Mette Kjær",
+        "photo": True,
+        "created_delta": timedelta(days=2),
+    },
+    {
+        "text": "Loftshøjde målt til 2,80 m mod 3,00 m projekteret",
+        "category": "Konstruktion",
+        "color": "#dc3545",
+        "open": False,
+        "location": "3 - 1. etage · s. 2",
+        "assignee": "Mette Kjær",
+        "deadline_delta": timedelta(days=-3),
+        "author": "Lene Bak",
+        "photo": False,
+        "created_delta": timedelta(days=5),
+    },
+    {
+        "text": "Manglende isolering i ydervæg mod nord",
+        "category": "Kvalitet",
+        "color": "#198754",
+        "open": False,
+        "location": "3 - 1. etage · s. 4",
+        "assignee": "",
+        "deadline_delta": None,
+        "author": "Anders Precht",
+        "photo": True,
+        "created_delta": timedelta(days=9),
+    },
+]
+
+
+def _demo_registrations():
+    """Materialise the relative deltas. `overdue` is computed here rather than
+    in the template — Django templates can't compare datetimes."""
+    now = timezone.now()
+    out = []
+    for r in _DEMO_REGISTRATIONS:
+        deadline = now + r["deadline_delta"] if r["deadline_delta"] is not None else None
+        out.append({
+            **r,
+            "created": now - r["created_delta"],
+            "deadline": deadline,
+            "overdue": bool(deadline and r["open"] and deadline < now),
+        })
+    return out
+
+
+@login_required
+def projects(request):
+    """Target layout for the coming project concept (demo data — see above)."""
+    return render(request, "core/projects.html", {"projects": _demo_projects()})
+
+
+@login_required
+def project_detail(request, slug):
+    """Stub — the layout for a single project is the next thing to design."""
+    project = next((p for p in _demo_projects() if p["slug"] == slug), None)
+    if project is None:
+        raise Http404("Ukendt projekt")
+    return render(
+        request,
+        "core/project_detail.html",
+        {"project": project, "registrations": _demo_registrations()},
+    )
+
+
+@login_required
+def folders(request):
     folder_links = request.user.company.folder_links.all() if request.user.company else []
-    return render(request, "core/home.html", {"folder_links": folder_links})
+    return render(request, "core/folders.html", {"folder_links": folder_links})
 
 
 # --- Folder picking (admin) -------------------------------------------------
@@ -97,7 +294,7 @@ def link_folder(request):
         item_id=item_id,
         defaults={"display_path": display_path, "added_by": request.user},
     )
-    return redirect("core:home")
+    return redirect("core:folders")
 
 
 @company_admin_required
@@ -105,7 +302,7 @@ def link_folder(request):
 def unlink_folder(request, pk):
     link = get_object_or_404(FolderLink, pk=pk, company=request.user.company)
     link.delete()
-    return redirect("core:home")
+    return redirect("core:folders")
 
 
 # --- Document browsing (members) --------------------------------------------
@@ -174,16 +371,20 @@ def _layers_section(request, form=None):
 
 
 @company_admin_required
-def manage(request):
-    users = request.user.company.users.order_by("-is_active", "-is_company_admin", "first_name")
+def users(request):
+    company_users = request.user.company.users.order_by(
+        "-is_active", "-is_company_admin", "first_name"
+    )
+    return render(request, "core/users.html", {"users": company_users})
+
+
+@company_admin_required
+def settings(request):
+    """Company settings — layers only, for now."""
     return render(
         request,
-        "core/manage.html",
-        {
-            "layers": request.user.company.layers.all(),
-            "form": LayerForm(),
-            "users": users,
-        },
+        "core/settings.html",
+        {"layers": request.user.company.layers.all(), "form": LayerForm()},
     )
 
 

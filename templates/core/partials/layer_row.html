@@ -5,9 +5,9 @@
     {% if error %}<span class="small text-danger">{{ error }}</span>{% endif %}
     <button class="btn btn-sm btn-outline-secondary"
             hx-get="{% url 'core:layer_edit' layer.pk %}"
-            hx-target="#layer-{{ layer.pk }}" hx-swap="outerHTML">Edit</button>
+            hx-target="#layer-{{ layer.pk }}" hx-swap="outerHTML">Redigér</button>
     <button class="btn btn-sm btn-outline-danger"
             hx-post="{% url 'core:layer_delete' layer.pk %}"
             hx-target="#layers-section" hx-swap="innerHTML"
-            hx-confirm="Delete layer '{{ layer.name }}'?">Delete</button>
+            hx-confirm="Slet laget '{{ layer.name }}'?">Slet</button>
 </li>

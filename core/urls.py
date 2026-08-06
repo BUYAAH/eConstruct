@@ -1,16 +1,27 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import views
 
 app_name = "core"
 
+# URL paths stay English even though the UI is Danish — same rule as the
+# internal `micki:*` identifiers (PLAN.md "Known decisions still open" #4).
 urlpatterns = [
-    path("", views.home, name="home"),
-    path("manage/", views.manage, name="manage"),
-    path("manage/layers/new/", views.layer_create, name="layer_create"),
-    path("manage/layers/<int:pk>/edit/", views.layer_edit, name="layer_edit"),
-    path("manage/layers/<int:pk>/delete/", views.layer_delete, name="layer_delete"),
-    path("manage/users/<int:pk>/toggle/<str:field>/", views.user_toggle, name="user_toggle"),
+    path("", views.overview, name="overview"),
+    path("projects/", views.projects, name="projects"),
+    path("projects/<slug:slug>/", views.project_detail, name="project_detail"),
+    path("folders/", views.folders, name="folders"),
+    path("registrations/", views.registrations, name="registrations"),
+    path("reports/", views.reports, name="reports"),
+    path("users/", views.users, name="users"),
+    path("settings/", views.settings, name="settings"),
+    # /manage/ was users + layers on one page before the dashboard split.
+    path("manage/", RedirectView.as_view(pattern_name="core:users"), name="manage"),
+    path("settings/layers/new/", views.layer_create, name="layer_create"),
+    path("settings/layers/<int:pk>/edit/", views.layer_edit, name="layer_edit"),
+    path("settings/layers/<int:pk>/delete/", views.layer_delete, name="layer_delete"),
+    path("users/<int:pk>/toggle/<str:field>/", views.user_toggle, name="user_toggle"),
     path("folders/add/", views.folder_picker, name="folder_picker"),
     path("folders/browse/", views.browse, name="browse"),
     path("folders/link/", views.link_folder, name="link_folder"),

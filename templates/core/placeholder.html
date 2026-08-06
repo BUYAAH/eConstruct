@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% comment %}
+Shared empty state for the sidebar entries that aren't built yet
+(Oversigt, Registreringer, Rapporter). Views pass `heading` + `icon`.
+{% endcomment %}
+
+{% block title %}{{ heading }} — {{ brand }}{% endblock %}
+{% block page_title %}{{ heading }}{% endblock %}
+
+{% block content %}
+<div class="app-placeholder">
+    <svg class="app-icon mb-3"><use href="#{{ icon }}"></use></svg>
+    <p class="fw-semibold mb-1">{{ heading }}</p>
+    <p class="text-body-secondary mb-0">Denne side er på vej.</p>
+</div>
+{% endblock %}

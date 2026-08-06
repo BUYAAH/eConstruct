@@ -1,7 +1,7 @@
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <p class="text-body-secondary small mb-0">{{ path }} — choose a document library:</p>
+    <p class="text-body-secondary small mb-0">{{ path }} — vælg et dokumentbibliotek:</p>
     <button class="btn btn-sm btn-link" hx-get="{% url 'core:browse' %}" hx-target="#browser" hx-swap="innerHTML">
-        &larr; Sites
+        &larr; Websteder
     </button>
 </div>
 <div class="list-group">
@@ -12,6 +12,6 @@
         🗂️ {{ drive.name }}
     </button>
     {% empty %}
-    <p class="text-body-secondary">This site has no document libraries.</p>
+    <p class="text-body-secondary">Dette websted har ingen dokumentbiblioteker.</p>
     {% endfor %}
 </div>

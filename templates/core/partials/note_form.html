@@ -7,11 +7,11 @@
     {% endif %}
 
     {% if form.errors %}
-    <div class="alert alert-danger py-2 small">Please fill in both fields.</div>
+    <div class="alert alert-danger py-2 small">Udfyld venligst begge felter.</div>
     {% endif %}
 
     <div class="mb-2">
-        <label class="form-label small text-body-secondary mb-1">For</label>
+        <label class="form-label small text-body-secondary mb-1">Til</label>
         {{ form.layer }}
     </div>
     <div class="mb-2">
@@ -19,8 +19,8 @@
         {{ form.text }}
     </div>
     <div class="mb-3">
-        <label class="form-label small text-body-secondary mb-1">Photo (optional)</label>
+        <label class="form-label small text-body-secondary mb-1">Foto (valgfrit)</label>
         {{ form.photo }}
     </div>
-    <button class="btn btn-primary w-100 py-2">Save note</button>
+    <button class="btn btn-primary w-100 py-2">Gem note</button>
 </form>

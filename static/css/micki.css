@@ -1,7 +1,68 @@
 /* Micki look & feel on top of Bootstrap 5.3 */
 
+:root {
+    --app-sidebar: #16202B;
+    --app-sidebar-hover: #22303F;
+    --app-canvas: #F7F8FA;
+    --app-border: #E3E6EA;
+    --app-muted: #5A6673;
+    --app-accent: #F59E0B;      /* on the dark rail */
+    --app-accent-dk: #B45309;   /* text/buttons on light backgrounds */
+    --app-sidebar-w: 250px;
+
+    /* Repoint Bootstrap's primary so existing btn-primary / bg-primary-subtle
+       inherit the accent instead of needing a find-and-replace. */
+    --bs-primary: var(--app-accent-dk);
+    --bs-primary-rgb: 180, 83, 9;
+    --bs-link-color: var(--app-accent-dk);
+    --bs-link-hover-color: #92400E;
+    --bs-primary-bg-subtle: #FEF3C7;
+    --bs-primary-border-subtle: #FDE68A;
+
+    /* Typography. Change --app-font here to swap the whole app's face — it
+       drives Bootstrap's own variable, so components inherit it too.
+       Both faces are vendored in css/fonts.css, so switching is a one-line
+       edit here:
+         serif -> "EB Garamond", Garamond, "Palatino Linotype", serif
+                  (also bump --bs-body-font-size to 1.06rem; small x-height)
+       IBM Plex Sans is the current pick: drawn for technical/engineering
+       products, tall x-height that survives a bright site tablet. */
+    --app-font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Roboto, "Helvetica Neue", Arial, sans-serif;
+    --bs-body-font-family: var(--app-font);
+    --bs-body-font-size: 1rem;
+}
+
 body {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--app-canvas);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--app-accent-dk);
+    --bs-btn-border-color: var(--app-accent-dk);
+    --bs-btn-hover-bg: #92400E;
+    --bs-btn-hover-border-color: #92400E;
+    --bs-btn-active-bg: #78350F;
+    --bs-btn-active-border-color: #78350F;
+    --bs-btn-disabled-bg: var(--app-accent-dk);
+    --bs-btn-disabled-border-color: var(--app-accent-dk);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--app-accent-dk);
+    --bs-btn-border-color: var(--app-accent-dk);
+    --bs-btn-hover-bg: var(--app-accent-dk);
+    --bs-btn-hover-border-color: var(--app-accent-dk);
+    --bs-btn-active-bg: var(--app-accent-dk);
+    --bs-btn-active-border-color: var(--app-accent-dk);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 .2rem rgba(245, 158, 11, .2);
 }
 
 .card {
@@ -13,35 +74,149 @@ body {
 .card > .card-header {
     background: var(--bs-body-bg);
     border-bottom: 1px solid var(--bs-border-color-translucent);
-    font-weight: 600;
+    font-weight: 500;
     border-radius: .75rem .75rem 0 0 !important;
 }
 
-.navbar-micki {
+/* --- App shell -------------------------------------------------------- */
+
+.app-topbar {
     background: var(--bs-body-bg);
-    border-bottom: 1px solid var(--bs-border-color-translucent);
+    border-bottom: 1px solid var(--app-border);
+    height: 56px;
+}
+
+/* Bootstrap's .breadcrumb is block-level with a bottom margin — neutralise
+   both so it sits on the topbar's centre line. */
+.app-topbar .breadcrumb {
+    margin-bottom: 0;
+    font-size: .925rem;
+    flex-wrap: nowrap;
+}
+
+.app-topbar .breadcrumb-item a {
+    color: var(--app-muted);
+    text-decoration: none;
+}
+
+.app-topbar .breadcrumb-item a:hover {
+    color: var(--app-accent-dk);
+    text-decoration: underline;
+}
+
+.app-topbar .breadcrumb-item.active {
+    color: var(--bs-body-color);
+    font-weight: 500;
+    min-width: 0;
+}
+
+.min-width-0 { min-width: 0; }
+
+/* The fixed rail (>=992px) and the offcanvas body (<992px) share this. */
+.app-sidebar {
+    background: var(--app-sidebar);
+    color: #fff;
+    width: var(--app-sidebar-w);
+}
+
+@media (min-width: 992px) {
+    .app-sidebar-fixed {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1030;
+        overflow-y: auto;
+    }
+
+    .app-main {
+        margin-left: var(--app-sidebar-w);
+    }
+}
+
+.app-container {
+    max-width: 1200px;
+}
+
+.app-brand {
+    color: #fff;
+    font-size: 1.15rem;
+    letter-spacing: -.01em;
+}
+
+.app-brand:hover { color: #fff; }
+
+.app-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem .75rem;
+    border-radius: .55rem;
+    color: rgba(255, 255, 255, .72);
+    text-decoration: none;
+    font-size: .925rem;
+    font-weight: 400;
+    min-height: 44px;   /* touch target */
+}
+
+.app-nav-link:hover {
+    background: var(--app-sidebar-hover);
+    color: #fff;
+}
+
+.app-nav-link.active {
+    background: var(--app-sidebar-hover);
+    color: #fff;
+}
+
+/* Base size for every sprite icon. An inline <svg> with no width/height falls
+   back to 300x150px, so this must live on the class itself, not only on the
+   contexts that happen to use it. */
+.app-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex-shrink: 0;
+}
+
+.app-nav-link .app-icon {
+    opacity: .9;
+}
+
+.app-nav-link.active .app-icon { color: var(--app-accent); opacity: 1; }
+
+.app-nav-section {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: rgba(255, 255, 255, .38);
+    padding: 0 .75rem;
+}
+
+.app-sidebar-footer {
+    border-top: 1px solid rgba(255, 255, 255, .1);
 }
 
 .brand-dot {
     width: .95rem;
     height: .95rem;
     border-radius: 50%;
-    background: var(--bs-primary);
-    box-shadow: 0 0 0 4px rgba(13, 110, 253, .18);
+    background: var(--app-accent);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, .22);
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .avatar {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: var(--bs-primary);
+    background: var(--app-accent-dk);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: .8rem;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: .02em;
 }
 
@@ -94,3 +269,235 @@ body {
 }
 
 .note-row { cursor: pointer; }
+
+/* --- Project cards ------------------------------------------------------ */
+
+/* Plex ships real tabular figures — use them wherever numbers stack in a
+   column, so digits keep the same width from row to row. */
+.project-stats,
+.project-nav-count {
+    font-variant-numeric: tabular-nums;
+}
+
+.project-card .project-stats > .col + .col {
+    border-left: 1px solid var(--app-border);
+}
+
+a.project-card {
+    transition: box-shadow .15s ease, transform .15s ease;
+}
+
+a.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 24, 40, .12), 0 2px 5px rgba(16, 24, 40, .06);
+}
+
+a.project-card:hover .h6 {
+    color: var(--app-accent-dk);
+}
+
+a.project-card:focus-visible {
+    outline: 2px solid var(--app-accent-dk);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    a.project-card { transition: none; }
+    a.project-card:hover { transform: none; }
+}
+
+.project-card .progress {
+    background-color: var(--app-border);
+}
+
+.project-card .progress-bar {
+    background-color: var(--app-accent-dk);
+}
+
+/* The three column headers hold different content — text, text + badge, and a
+   btn-group — which otherwise gives them three different heights. Pin one
+   height and centre vertically so the tops line up across the row. */
+.project-grid .card > .card-header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 3.25rem;
+}
+
+/* Keeps the not-yet-built project panels from collapsing to nothing. */
+.project-panel {
+    min-height: 20rem;
+}
+
+/* Category swatch on a registration row — same visual language as the note
+   pins and layer chips in the PDF viewer. */
+.reg-dot {
+    width: .7rem;
+    height: .7rem;
+    border-radius: 50%;
+    background: var(--dot, var(--app-muted));
+    flex-shrink: 0;
+}
+
+/* --- Registrations table ------------------------------------------------ */
+
+.reg-table thead th {
+    font-size: .75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--app-muted);
+    background: var(--app-canvas);
+    border-bottom-color: var(--app-border);
+    white-space: nowrap;
+}
+
+.reg-table td {
+    font-size: .925rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Secondary line inside a cell shouldn't inherit the row's line-height gap. */
+.reg-table .reg-sub {
+    margin-top: .1rem;
+    line-height: 1.3;
+}
+
+.reg-table .badge {
+    font-weight: 500;
+}
+
+/* --- PDF preview pane --------------------------------------------------- */
+
+.pdf-preview-body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: auto;               /* a tall drawing scrolls inside the card */
+    background: var(--app-canvas);
+    padding: .75rem;
+}
+
+.pdf-preview-body canvas {
+    max-width: 100%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(16, 24, 40, .18);
+}
+
+/* Page counter sits inside a btn-group, so it needs to stop looking clickable. */
+.pdf-preview-page {
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+    min-width: 4.25rem;
+}
+
+/* Reference detail pinned to the bottom of the project nav card. Stacked
+   label-over-value rather than two columns — "Projektleder" is too long to
+   sit beside its value in a col-3. */
+.project-meta {
+    margin: 0;
+    padding: .85rem 1rem;
+    border-top: 1px solid var(--app-border);
+}
+
+.project-meta dt {
+    font-size: .75rem;
+    font-weight: 400;
+    color: var(--app-muted);
+}
+
+.project-meta dd {
+    margin: 0 0 .65rem;
+    font-size: .9rem;
+}
+
+.project-meta dd:last-child {
+    margin-bottom: 0;
+}
+
+/* Section nav inside a project. Same shape as the sidebar rail, inverted for
+   a light card: tinted pill instead of a solid Bootstrap list-group block. */
+.project-nav {
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    padding: .5rem;
+}
+
+.project-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    width: 100%;
+    min-height: 44px;          /* touch target */
+    padding: .55rem .7rem;
+    border: 0;
+    border-radius: .55rem;
+    background: transparent;
+    color: var(--app-muted);
+    font-size: .925rem;
+    font-weight: 400;
+    text-align: left;
+    transition: background-color .12s ease, color .12s ease;
+}
+
+.project-nav-link:hover {
+    background: var(--app-canvas);
+    color: var(--bs-body-color);
+}
+
+.project-nav-link.active {
+    background: var(--bs-primary-bg-subtle);
+    color: var(--app-accent-dk);
+    font-weight: 500;
+}
+
+.project-nav-link .app-icon { opacity: .8; }
+.project-nav-link.active .app-icon { opacity: 1; }
+
+.project-nav-link:focus-visible {
+    outline: 2px solid var(--app-accent-dk);
+    outline-offset: -2px;
+}
+
+.project-nav-count {
+    margin-left: auto;
+    padding: .05rem .45rem;
+    min-width: 1.7rem;
+    border-radius: 999px;
+    background: var(--app-canvas);
+    color: var(--app-muted);
+    font-size: .75rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.project-nav-link:hover .project-nav-count,
+.project-nav-link.active .project-nav-count {
+    background: #fff;
+}
+
+.project-nav-link.active .project-nav-count {
+    color: var(--app-accent-dk);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .project-nav-link { transition: none; }
+}
+
+/* --- Placeholder screens (Oversigt / Registreringer / Rapporter) -------- */
+
+.app-placeholder {
+    border: 1px dashed var(--app-border);
+    border-radius: .75rem;
+    background: var(--bs-body-bg);
+    padding: 4rem 1.5rem;
+    text-align: center;
+}
+
+.app-placeholder .app-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--app-muted);
+    opacity: .55;
+}

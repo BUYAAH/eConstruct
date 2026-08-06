@@ -2,7 +2,7 @@
     {% for layer in layers %}
     {% include "core/partials/layer_row.html" %}
     {% empty %}
-    <li class="list-group-item text-body-secondary small">No layers yet — notes need at least one.</li>
+    <li class="list-group-item text-body-secondary small">Ingen lag endnu — noter kræver mindst ét.</li>
     {% endfor %}
 </ul>
 
@@ -10,7 +10,7 @@
       class="d-flex gap-2 align-items-start px-2 pb-1">
     {{ form.name }}
     {{ form.color }}
-    <button class="btn btn-sm btn-primary flex-shrink-0">Add</button>
+    <button class="btn btn-sm btn-primary flex-shrink-0">Tilføj</button>
 </form>
 {% if form.errors %}
 <div class="small text-danger px-2">

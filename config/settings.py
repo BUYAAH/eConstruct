@@ -66,6 +66,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.nav',
+                'core.context_processors.brand',
             ],
         },
     },
@@ -107,7 +109,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'da-dk'
 
 TIME_ZONE = 'Europe/Copenhagen'
 
@@ -127,6 +129,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Note photos live here; served only through the login-protected note_photo view.
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Product name shown to users. Deliberately the ONLY place it is spelled out —
+# it went Micki -> ImagR -> EzConstruct and is still a working title. Templates
+# read it as {{ brand }} via core.context_processors.brand. Internal identifiers
+# (repo, CSS classes, `micki:*` JS events) are NOT branded and never change.
+BRAND_NAME = "EzConstruct"
 
 AUTH_USER_MODEL = "accounts.User"
 

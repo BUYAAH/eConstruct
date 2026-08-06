@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}{{ link.display_path }} — ImagR{% endblock %}
+{% block title %}{{ link.display_path }} — {{ brand }}{% endblock %}
+
+{% block page_title %}{{ link.display_path }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
-    <h1 class="h6 mb-0 text-truncate">📁 {{ link.display_path }}</h1>
-    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="{% url 'core:home' %}">&larr; Folders</a>
+    <h1 class="h6 mb-0 text-truncate d-flex align-items-center gap-2">
+        <svg class="app-icon text-body-secondary"><use href="#i-folders"></use></svg>{{ link.display_path }}
+    </h1>
+    <a class="btn btn-sm btn-outline-secondary flex-shrink-0" href="{% url 'core:folders' %}">&larr; Mapper</a>
 </div>
 
 <div class="card">

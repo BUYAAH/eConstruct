@@ -8,7 +8,7 @@ class LayerForm(forms.ModelForm):
         model = Layer
         fields = ["name", "color", "sort_order"]
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Layer name"}),
+            "name": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Lagnavn"}),
             "color": forms.TextInput(attrs={"type": "color", "class": "form-control form-control-color form-control-sm"}),
             "sort_order": forms.NumberInput(attrs={"class": "form-control form-control-sm", "style": "width: 5rem;"}),
         }
@@ -29,7 +29,7 @@ class NoteForm(forms.ModelForm):
         widgets = {
             "layer": forms.Select(attrs={"class": "form-select"}),
             "text": forms.Textarea(
-                attrs={"class": "form-control", "rows": 3, "placeholder": "Write your note…"}
+                attrs={"class": "form-control", "rows": 3, "placeholder": "Skriv din note…"}
             ),
             "photo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
         }

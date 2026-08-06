@@ -25,7 +25,8 @@ long-term architecture.
 | Billing | None — companies created manually in Django admin | Deal is closed by hand; Stripe is post-MVP |
 | Database | SQLite | Demo-scale; rebuild expected after pitch feedback |
 | PDF viewer | One page at a time, prev/next + page jumper | Simple pin math, HTMX partials, good on mobile |
-| UI language | English | — |
+| UI language | **Danish** (changed 2026-07-27; was English) | Pitch audience is a Danish construction firm. Strings are hardcoded — gettext/i18n stays out of scope (§6). URL paths and internal identifiers stay English |
+| Shell | SaaS dashboard: left sidebar (Oversigt, Projekter, Mapper, Registreringer, Rapporter, Brugere, Indstillinger), content right | Reads as a real product in the pitch; sidebar collapses to a Bootstrap offcanvas below 992px |
 | Hosting | PythonAnywhere (deployed before the pitch) | Real URL for OAuth redirect and follow-up link |
 | Devices | **Phone/tablet first** | Primary users are on mobile — touch-first PDF viewer, responsive Bootstrap throughout |
 

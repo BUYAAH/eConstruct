@@ -1,0 +1,32 @@
+{% comment %}
+The sidebar nav list. Included twice by base.html — once in the fixed
+desktop rail, once inside the mobile offcanvas — so the links live in
+exactly one place. Active state comes from core.context_processors.nav.
+{% endcomment %}
+<nav class="nav flex-column gap-1 px-2">
+    <a class="app-nav-link {% if nav_section == 'overview' %}active{% endif %}" href="{% url 'core:overview' %}">
+        <svg class="app-icon"><use href="#i-overview"></use></svg>Oversigt
+    </a>
+    <a class="app-nav-link {% if nav_section == 'projects' %}active{% endif %}" href="{% url 'core:projects' %}">
+        <svg class="app-icon"><use href="#i-projects"></use></svg>Projekter
+    </a>
+    <a class="app-nav-link {% if nav_section == 'folders' %}active{% endif %}" href="{% url 'core:folders' %}">
+        <svg class="app-icon"><use href="#i-folders"></use></svg>Mapper
+    </a>
+    <a class="app-nav-link {% if nav_section == 'registrations' %}active{% endif %}" href="{% url 'core:registrations' %}">
+        <svg class="app-icon"><use href="#i-registrations"></use></svg>Registreringer
+    </a>
+    <a class="app-nav-link {% if nav_section == 'reports' %}active{% endif %}" href="{% url 'core:reports' %}">
+        <svg class="app-icon"><use href="#i-reports"></use></svg>Rapporter
+    </a>
+
+    {% if user.is_company_admin %}
+    <div class="app-nav-section mt-3 mb-1">Administration</div>
+    <a class="app-nav-link {% if nav_section == 'users' %}active{% endif %}" href="{% url 'core:users' %}">
+        <svg class="app-icon"><use href="#i-users"></use></svg>Brugere
+    </a>
+    <a class="app-nav-link {% if nav_section == 'settings' %}active{% endif %}" href="{% url 'core:settings' %}">
+        <svg class="app-icon"><use href="#i-settings"></use></svg>Indstillinger
+    </a>
+    {% endif %}
+</nav>

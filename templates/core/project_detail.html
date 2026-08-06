@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% comment %}
+Working layout for a single project. Sidebar nav / main panel / action rail.
+The nav items and both empty panels are placeholders — the nav entries are
+<button>s rather than <a href="#">s so nothing navigates until it's real.
+{% endcomment %}
+
+{% block title %}{{ project.name }} — {{ brand }}{% endblock %}
+
+{% block topbar_title %}
+<nav aria-label="Brødkrumme" class="min-width-0">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:projects' %}">Projekter</a></li>
+        <li class="breadcrumb-item active text-truncate" aria-current="page">{{ project.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% comment %}
+Full-bleed: drops the 1200px cap, keeps a modest gutter. mx-0 on the row
+kills the negative margins that would otherwise overflow horizontally, so
+edge spacing = this padding + the row's own .75rem gutter.
+{% endcomment %}
+{% block container_class %}container-fluid px-2 px-md-3 py-3 py-md-4{% endblock %}
+
+{% block content %}
+<div class="row g-3 mx-0 project-grid">
+
+    <div class="col-12 col-lg-3">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="flex-grow-1 text-truncate">{{ project.name }}</span>
+                <span class="badge text-bg-{{ project.status_class }} flex-shrink-0">{{ project.status }}</span>
+            </div>
+
+            <nav class="project-nav">
+                <button type="button" class="project-nav-link active">
+                    <svg class="app-icon"><use href="#i-overview"></use></svg>Oversigt
+                </button>
+                <button type="button" class="project-nav-link">
+                    <svg class="app-icon"><use href="#i-drawings"></use></svg>Tegninger
+                    <span class="project-nav-count">{{ project.drawings }}</span>
+                </button>
+                <button type="button" class="project-nav-link">
+                    <svg class="app-icon"><use href="#i-documents"></use></svg>Dokumenter
+                    <span class="project-nav-count">{{ project.documents }}</span>
+                </button>
+                <button type="button" class="project-nav-link">
+                    <svg class="app-icon"><use href="#i-registrations"></use></svg>Registreringer
+                    <span class="project-nav-count">{{ project.registrations }}</span>
+                </button>
+            </nav>
+
+            {% comment %}
+            Reference detail, deliberately below the nav — it's context, not
+            a destination.
+            {% endcomment %}
+            <dl class="project-meta">
+                <dt>Sagsnr.</dt>
+                <dd>{{ project.case_no }}</dd>
+                <dt>Adresse</dt>
+                <dd>{{ project.address }}</dd>
+                <dt>Projektleder</dt>
+                <dd>{{ project.manager }}</dd>
+                <dt>Sidst ændret</dt>
+                <dd>{{ project.updated|timesince }} siden</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-9 d-flex flex-column gap-3">
+        {% comment %}
+        Hardcoded drawing for the mock-up. Becomes a real Document/drive item
+        once the project model exists — only data-pdf-url has to change.
+        {% endcomment %}
+        <div class="card d-flex flex-column"
+             data-pdf-preview
+             data-pdfjs="{% static 'vendor/pdfjs/pdf.min.mjs' %}"
+             data-pdfjs-worker="{% static 'vendor/pdfjs/pdf.worker.min.mjs' %}"
+             data-pdf-url="{% static 'img/3 - 1. ETAGE.pdf' %}">
+
+            <div class="card-header d-flex align-items-center gap-2">
+                <svg class="app-icon flex-shrink-0"><use href="#i-drawings"></use></svg>
+                <span class="flex-grow-1 text-truncate">3 - 1. etage</span>
+                <div class="btn-group btn-group-sm flex-shrink-0">
+                    <button type="button" class="btn btn-outline-secondary px-2"
+                            data-pdf-prev aria-label="Forrige side" disabled>&larr;</button>
+                    <span class="btn btn-outline-secondary disabled px-2 pdf-preview-page"
+                          data-pdf-page>…</span>
+                    <button type="button" class="btn btn-outline-secondary px-2"
+                            data-pdf-next aria-label="Næste side" disabled>&rarr;</button>
+                </div>
+            </div>
+
+            <div class="card-body pdf-preview-body project-panel">
+                <div class="text-body-secondary" data-pdf-status>
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Indlæser tegning…
+                </div>
+                <canvas class="d-none" data-pdf-canvas></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="flex-grow-1">Registreringer</span>
+                <button type="button" class="btn btn-sm btn-primary flex-shrink-0">
+                    + Ny registrering
+                </button>
+            </div>
+            {% comment %}
+            table-responsive so the table scrolls inside the card on narrow
+            screens rather than forcing the whole page sideways.
+            {% endcomment %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 reg-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Emne</th>
+                            <th scope="col">Faggruppe</th>
+                            <th scope="col">Navne</th>
+                            <th scope="col">Dato</th>
+                            <th scope="col">Deadline</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in registrations %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="reg-dot" style="--dot: {{ r.color }};"></span>
+                                    <span>{{ r.text }}</span>
+                                    {% if r.photo %}
+                                    <svg class="app-icon text-body-secondary flex-shrink-0"
+                                         role="img" aria-label="Har foto"><use href="#i-photo"></use></svg>
+                                    {% endif %}
+                                </div>
+                                <div class="small text-body-secondary reg-sub">{{ r.location }}</div>
+                            </td>
+                            <td class="text-nowrap">{{ r.category }}</td>
+                            <td class="text-nowrap">
+                                {{ r.author }}
+                                {% if r.assignee %}
+                                <div class="small text-body-secondary reg-sub">&rarr; {{ r.assignee }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-nowrap">{{ r.created|date:"SHORT_DATE_FORMAT" }}</td>
+                            <td class="text-nowrap">
+                                {% if r.deadline %}
+                                <span {% if r.overdue %}class="text-danger fw-medium"{% endif %}>
+                                    {{ r.deadline|date:"SHORT_DATE_FORMAT" }}
+                                </span>
+                                {% else %}
+                                <span class="text-body-secondary">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.overdue %}
+                                <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Overskredet</span>
+                                {% elif r.open %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Åben</span>
+                                {% else %}
+                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Løst</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/pdf-preview.js' %}"></script>
+{% endblock %}

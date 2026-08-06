@@ -6,13 +6,13 @@
         <input type="hidden" name="item_id" value="{{ item_id }}">
         <input type="hidden" name="display_path" value="{{ path }}">
         <button class="btn btn-success w-100 py-2">
-            Link this folder{% if pdf_count %} ({{ pdf_count }} PDF{{ pdf_count|pluralize }}){% endif %}
+            Tilknyt denne mappe{% if pdf_count %} ({{ pdf_count }} PDF{{ pdf_count|pluralize:"'er" }}){% endif %}
         </button>
     </form>
 </div>
 
 {% if folders %}
-<p class="text-body-secondary small mb-2">…or go into a subfolder:</p>
+<p class="text-body-secondary small mb-2">…eller gå ind i en undermappe:</p>
 <div class="list-group">
     {% for folder in folders %}
     <button class="list-group-item list-group-item-action py-3"
@@ -27,6 +27,6 @@
 
 <div class="mt-2">
     <button class="btn btn-sm btn-link" hx-get="{% url 'core:browse' %}" hx-target="#browser" hx-swap="innerHTML">
-        &larr; Start over
+        &larr; Start forfra
     </button>
 </div>

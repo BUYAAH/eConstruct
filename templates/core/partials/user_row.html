@@ -2,7 +2,7 @@
     <div class="flex-grow-1">
         {{ u.get_full_name|default:u.username }}
         {% if u.is_company_admin %}<span class="badge text-bg-primary">Admin</span>{% endif %}
-        {% if not u.is_active %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}
+        {% if not u.is_active %}<span class="badge text-bg-secondary">Inaktiv</span>{% endif %}
         <div class="small text-body-secondary">{{ u.email }}</div>
         {% if error %}<div class="small text-danger">{{ error }}</div>{% endif %}
     </div>
@@ -10,12 +10,12 @@
     <button class="btn btn-sm btn-outline-secondary"
             hx-post="{% url 'core:user_toggle' u.pk 'is_company_admin' %}"
             hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">
-        {% if u.is_company_admin %}Remove admin{% else %}Make admin{% endif %}
+        {% if u.is_company_admin %}Fjern admin{% else %}Gør til admin{% endif %}
     </button>
     <button class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
             hx-post="{% url 'core:user_toggle' u.pk 'is_active' %}"
             hx-target="#user-{{ u.pk }}" hx-swap="outerHTML">
-        {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+        {% if u.is_active %}Deaktivér{% else %}Aktivér{% endif %}
     </button>
     {% endif %}
 </li>

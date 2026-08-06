@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Indstillinger — {{ brand }}{% endblock %}
+{% block page_title %}Indstillinger{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">Notelag</div>
+    <div class="card-body p-2" id="layers-section">
+        {% include "core/partials/layers_section.html" %}
+    </div>
+</div>
+{% endblock %}

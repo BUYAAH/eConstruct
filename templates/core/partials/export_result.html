@@ -1,10 +1,10 @@
 {% if error %}
 <div class="alert alert-warning py-2 small mb-2">
-    Export failed: {{ error.message }} (status {{ error.status_code }})
+    Eksport mislykkedes: {{ error.message }} (status {{ error.status_code }})
 </div>
 {% else %}
 <div class="alert alert-success py-2 small mb-2">
-    Exported {{ note_count }} note{{ note_count|pluralize }} —
-    <a href="{{ item.webUrl }}" target="_blank" rel="noopener" class="alert-link">open "{{ item.name }}" in SharePoint</a>
+    Eksporterede {{ note_count }} note{{ note_count|pluralize:"r" }} —
+    <a href="{{ item.webUrl }}" target="_blank" rel="noopener" class="alert-link">åbn "{{ item.name }}" i SharePoint</a>
 </div>
 {% endif %}
