@@ -67,7 +67,11 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates'],
+        # Absolute, not 'templates'. A relative path is resolved against the
+        # working directory, which is the project root under runserver but
+        # /var/www under a WSGI worker — so a relative path works locally and
+        # makes every non-admin page a TemplateDoesNotExist 500 once deployed.
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

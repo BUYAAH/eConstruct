@@ -103,7 +103,10 @@
       "PowerShell($env:DEBUG=\"False\"; $env:ALLOWED_HOSTS=\"test.example.com\"; & \"C:\\\\Users\\\\Marti\\\\Programming\\\\django\\\\micki\\\\venv\\\\Scripts\\\\python.exe\" manage.py check --deploy 2>&1 | Select-Object -Last 45)",
       "PowerShell(git branch -m master main)",
       "PowerShell(\"--- remote ---\")",
-      "Bash(grep -iE \"\\\\.env$|db\\\\.sqlite3|^media/\")"
+      "Bash(grep -iE \"\\\\.env$|db\\\\.sqlite3|^media/\")",
+      "PowerShell(git ls-remote --heads origin 2>&1)",
+      "PowerShell(\"=== status ===\")",
+      "PowerShell(\"=== remote refs ===\")"
     ]
   }
 }
