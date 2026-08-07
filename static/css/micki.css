@@ -6,18 +6,36 @@
     --app-canvas: #F7F8FA;
     --app-border: #E3E6EA;
     --app-muted: #5A6673;
-    --app-accent: #F59E0B;      /* on the dark rail */
-    --app-accent-dk: #B45309;   /* text/buttons on light backgrounds */
+    /* Accent. Two variants because the rail and the canvas are different
+       problems: the light one has to read on graphite, the dark one has to
+       read on white *and* never be mistaken for data.
+
+       Deep navy, chosen 2026-08-07 over the previous safety-amber. The
+       palette is crowded — disciplines claim red/orange/blue/cyan/green and
+       the status badges claim red/amber/blue/green — so the accent has to
+       survive sitting beside all of them. Two rules keep it clear:
+         - the dark variant is far darker and flatter than El's #0d6efd, so
+           a button never reads as a pin;
+         - the light variant only ever appears on the graphite rail, which
+           pins and badges never touch.
+       To try another accent, change these five values and the two _rgb
+       ones — nothing else hardcodes the colour. */
+    --app-accent: #7FA9DB;      /* on the dark rail */
+    --app-accent-dk: #1E3A6E;   /* text/buttons on light backgrounds */
+    --app-accent-rgb: 127, 169, 219;
+    --app-accent-dk-rgb: 30, 58, 110;
+    --app-accent-hover: #16294D;
+    --app-accent-active: #0F1D38;
     --app-sidebar-w: 250px;
 
     /* Repoint Bootstrap's primary so existing btn-primary / bg-primary-subtle
        inherit the accent instead of needing a find-and-replace. */
     --bs-primary: var(--app-accent-dk);
-    --bs-primary-rgb: 180, 83, 9;
+    --bs-primary-rgb: var(--app-accent-dk-rgb);
     --bs-link-color: var(--app-accent-dk);
-    --bs-link-hover-color: #92400E;
-    --bs-primary-bg-subtle: #FEF3C7;
-    --bs-primary-border-subtle: #FDE68A;
+    --bs-link-hover-color: var(--app-accent-hover);
+    --bs-primary-bg-subtle: #DBE7F6;
+    --bs-primary-border-subtle: #B9CFEA;
 
     /* Typography. Change --app-font here to swap the whole app's face — it
        drives Bootstrap's own variable, so components inherit it too.
@@ -42,10 +60,10 @@ body {
 .btn-primary {
     --bs-btn-bg: var(--app-accent-dk);
     --bs-btn-border-color: var(--app-accent-dk);
-    --bs-btn-hover-bg: #92400E;
-    --bs-btn-hover-border-color: #92400E;
-    --bs-btn-active-bg: #78350F;
-    --bs-btn-active-border-color: #78350F;
+    --bs-btn-hover-bg: var(--app-accent-hover);
+    --bs-btn-hover-border-color: var(--app-accent-hover);
+    --bs-btn-active-bg: var(--app-accent-active);
+    --bs-btn-active-border-color: var(--app-accent-active);
     --bs-btn-disabled-bg: var(--app-accent-dk);
     --bs-btn-disabled-border-color: var(--app-accent-dk);
 }
@@ -62,7 +80,7 @@ body {
 .form-control:focus,
 .form-select:focus {
     border-color: var(--app-accent);
-    box-shadow: 0 0 0 .2rem rgba(245, 158, 11, .2);
+    box-shadow: 0 0 0 .2rem rgba(var(--app-accent-dk-rgb), .22);
 }
 
 .card {
@@ -201,7 +219,7 @@ body {
     height: .95rem;
     border-radius: 50%;
     background: var(--app-accent);
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, .22);
+    box-shadow: 0 0 0 4px rgba(var(--app-accent-rgb), .28);
     display: inline-block;
     flex-shrink: 0;
 }
