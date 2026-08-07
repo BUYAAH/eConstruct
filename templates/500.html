@@ -1,0 +1,31 @@
+{% load static %}
+<!doctype html>
+{% comment %}
+Rendered with an empty context — Django's handler500 passes no request and
+runs no context processors — so nothing here may reference `brand`, `user` or
+any {% url %} that depends on them. Keep it to static assets and plain text.
+
+Deliberately says nothing about what failed. The traceback goes to the log
+(settings.LOGGING), which is where it is useful; on screen it would only be
+something to paste into an issue, or worse, into a search engine.
+{% endcomment %}
+<html lang="da">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Der gik noget galt</title>
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/micki.css' %}">
+</head>
+<body class="d-flex align-items-center justify-content-center vh-100 text-center px-3">
+    <main>
+        <p class="display-6 mb-2">500</p>
+        <h1 class="h5 mb-3">Der gik noget galt</h1>
+        <p class="text-body-secondary mb-4">
+            Fejlen er registreret. Prøv igen om lidt.
+        </p>
+        <a class="btn btn-primary" href="/">Tilbage til forsiden</a>
+    </main>
+</body>
+</html>

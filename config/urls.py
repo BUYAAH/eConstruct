@@ -20,5 +20,8 @@ from django.urls import include, path
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('accounts.urls')),
+    # Internal console — superuser-only, 404 for everyone else. Mounted above
+    # core because core owns the root and would otherwise swallow the prefix.
+    path('mothership/', include('mothership.urls')),
     path('', include('core.urls')),
 ]

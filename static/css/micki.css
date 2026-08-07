@@ -238,15 +238,112 @@ body {
     letter-spacing: .02em;
 }
 
-.icon-square {
-    width: 2.4rem;
-    height: 2.4rem;
-    border-radius: .65rem;
+/* --- Stat tiles (Oversigt + Projekter) --------------------------------- */
+
+/* Each tile sets --tile-tint and --tile-ink; everything below reads them, so
+   a new tile is two custom properties rather than a new block of rules. */
+.stat-tile {
+    --tile-tint: var(--bs-primary-bg-subtle);
+    --tile-ink: var(--app-accent-dk);
+
+    display: flex;
+    align-items: center;
+    gap: .875rem;
+    height: 100%;
+    padding: 1rem;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--app-border);
+    border-radius: .75rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+/* Only the <a> tiles lift — the neutral one isn't clickable and shouldn't
+   pretend to be. */
+a.stat-tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--tile-ink);
+    box-shadow: 0 4px 14px rgba(16, 24, 40, .10);
+    color: inherit;
+}
+
+a.stat-tile:focus-visible {
+    outline: 2px solid var(--tile-ink);
+    outline-offset: 2px;
+}
+
+.stat-tile .icon-square {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: .7rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.15rem;
     flex-shrink: 0;
+    background: var(--tile-tint);
+    color: var(--tile-ink);
+}
+
+.stat-tile .icon-square .app-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.stat-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.stat-value {
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.1;
+    /* Tabular figures so the numbers don't jitter as counts change. */
+    font-variant-numeric: tabular-nums;
+    color: var(--tile-ink);
+}
+
+.stat-label {
+    font-size: .8125rem;
+    color: var(--app-muted);
+    line-height: 1.25;
+}
+
+/* Nothing to act on: the tile stays legible but stops competing for the eye,
+   so a screen of zeros reads as calm rather than as four alerts. */
+.stat-tile.is-zero {
+    --tile-tint: #EEF1F4;
+    --tile-ink: var(--app-muted);
+}
+
+.stat-tile-danger  { --tile-tint: #FEE2E2; --tile-ink: #B91C1C; }
+.stat-tile-warning { --tile-tint: #FEF3C7; --tile-ink: #B45309; }
+.stat-tile-info    { --tile-tint: #DBEAFE; --tile-ink: #1D4ED8; }
+.stat-tile-neutral { --tile-tint: #E7EBF0; --tile-ink: var(--app-accent-dk); }
+
+/* Narrow: the four tiles are a 2x2 grid, where the long labels wrap and the
+   icon starts to crowd the number. */
+@media (max-width: 575.98px) {
+    .stat-tile {
+        padding: .75rem;
+        gap: .625rem;
+    }
+
+    .stat-tile .icon-square {
+        width: 2.1rem;
+        height: 2.1rem;
+        border-radius: .55rem;
+    }
+
+    .stat-value { font-size: 1.35rem; }
+    .stat-label { font-size: .75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stat-tile { transition: none; }
+    a.stat-tile:hover { transform: none; }
 }
 
 /* --- PDF viewer ------------------------------------------------------- */
@@ -298,14 +395,96 @@ body {
     color: #fff;
 }
 
-.note-row { cursor: pointer; }
+/* The viewer toolbar: page nav, the faggruppe chips, and the actions.
+ *
+ * Three zones on one line from md up. Below that there is no room to share, so
+ * the chips drop to a line of their own — done with order + flex-basis rather
+ * than a second copy of the markup, so the chips exist once in the DOM and
+ * viewer.js has one set of buttons to bind.
+ *
+ * The nav and the actions never shrink: whatever else happens, you can always
+ * change page and always reach + Registrering. The chips absorb the pressure,
+ * because a chip row that scrolls is usable and a page control that has been
+ * squeezed to nothing is not. */
+.viewer-toolbar {
+    flex-wrap: wrap;
+}
+
+.viewer-toolbar .toolbar-nav,
+.viewer-toolbar .toolbar-actions {
+    flex-shrink: 0;
+}
+
+.viewer-toolbar .toolbar-actions {
+    margin-left: auto;
+}
+
+/* Exactly one line whatever a client defines — twelve faggrupper scroll
+   sideways instead of pushing the drawing further down the page, which on a
+   phone is the difference between opening the viewer and seeing the drawing,
+   or seeing a wall of buttons.
+
+   The scrollbar is left visible rather than hidden: it only appears when the
+   row actually overflows, which makes it the affordance that says there is
+   more to the right. A permanent fade would say that even when there isn't. */
+.chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    /* Room for the bar so it never sits on top of a chip. */
+    padding-bottom: .15rem;
+    /* Momentum scrolling and no vertical rubber-banding on iOS. */
+    overscroll-behavior-x: contain;
+}
+
+.chip-row .discipline-chip {
+    flex-shrink: 0;
+}
+
+/* Below md: chips take the full second line. order puts them after the
+   actions even though they come before them in the DOM, which is the order
+   that reads correctly on a phone — controls, then filter. */
+.viewer-toolbar .chip-row {
+    flex: 1 1 100%;
+    order: 3;
+    margin-top: .25rem;
+}
+
+@media (min-width: 768px) {
+    .viewer-toolbar {
+        flex-wrap: nowrap;
+    }
+
+    .viewer-toolbar .chip-row {
+        /* min-width: 0 is what lets this shrink below its content and scroll
+           instead of forcing the toolbar wider than the card. */
+        flex: 1 1 auto;
+        min-width: 0;
+        order: 0;
+        margin-top: 0;
+        margin-inline: .25rem;
+    }
+}
+
+/* The toolbar row above it does not wrap, so it has to fit the narrowest
+   phone we support. Width lives here rather than inline precisely so it can
+   shrink: at 360px the row is page nav + button + kebab with nothing to
+   spare, and a drawing with a three-digit page count is what tips it over. */
+.page-input {
+    width: 4.5rem;
+}
+
+@media (max-width: 400px) {
+    .page-input {
+        width: 3.25rem;
+    }
+}
 
 /* --- Project cards ------------------------------------------------------ */
 
 /* Plex ships real tabular figures — use them wherever numbers stack in a
    column, so digits keep the same width from row to row. */
-.project-stats,
-.project-nav-count {
+.project-stats {
     font-variant-numeric: tabular-nums;
 }
 
@@ -344,19 +523,14 @@ a.project-card:focus-visible {
     background-color: var(--app-accent-dk);
 }
 
-/* The three column headers hold different content — text, text + badge, and a
-   btn-group — which otherwise gives them three different heights. Pin one
-   height and centre vertically so the tops line up across the row. */
+/* The cards' headers hold different content — text + badge, text + button,
+   text + badge + button — which otherwise gives them different heights. Pin
+   one height and centre vertically so they line up across the row. */
 .project-grid .card > .card-header {
     display: flex;
     align-items: center;
     gap: .5rem;
     min-height: 3.25rem;
-}
-
-/* Keeps the not-yet-built project panels from collapsing to nothing. */
-.project-panel {
-    min-height: 20rem;
 }
 
 /* Category swatch on a registration row — same visual language as the note
@@ -369,150 +543,200 @@ a.project-card:focus-visible {
     flex-shrink: 0;
 }
 
-/* --- Registrations table ------------------------------------------------ */
+/* The faggruppe badge in a registration row: the swatch and the name in one
+   pill, so the colour is labelled instead of being a legend you memorise.
 
-.reg-table thead th {
+   The pill is neutral, not filled with the discipline's own colour, because
+   those colours are chosen by the customer — El's #ffc107 with white text is
+   unreadable, and there is no way to know in advance which hues they will
+   pick. The swatch carries the colour; the pill only has to stay legible.
+
+   The @supports block tints it toward the discipline colour where color-mix
+   is available (2023+ browsers), which is enough to scan a column by trade
+   without ever putting text on an unknown background. Old site tablets get
+   the neutral pill, which was already fine. */
+.reg-trade {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .15rem .5rem .15rem .4rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    font-size: .8125rem;
+    line-height: 1.4;
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--app-border);
+}
+
+@supports (background: color-mix(in srgb, red 10%, white)) {
+    .reg-trade {
+        background: color-mix(in srgb, var(--dot, var(--app-muted)) 10%, var(--bs-body-bg));
+        border-color: color-mix(in srgb, var(--dot, var(--app-muted)) 28%, var(--bs-body-bg));
+    }
+}
+
+/* The primary action in a card header. Pinned to one width so "+ Upload" and
+   "+ Ny" line up down the right edge of the page instead of each sizing to
+   its own label. min-width rather than width: a longer label grows instead of
+   being clipped. */
+.btn-card-action {
+    min-width: 85px;
+}
+
+/* --- Data tables (registrations, drawings) ----------------------------- */
+
+/* White rather than the canvas grey: the table sits inside a white card, and
+   a tinted header band read as a seam across it. The uppercase muted label
+   and the bottom rule carry the distinction on their own. */
+.data-table thead th {
     font-size: .75rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: .04em;
     color: var(--app-muted);
-    background: var(--app-canvas);
+    background: var(--bs-body-bg);
     border-bottom-color: var(--app-border);
     white-space: nowrap;
 }
 
-.reg-table td {
+.data-table td {
     font-size: .925rem;
     font-variant-numeric: tabular-nums;
 }
 
 /* Secondary line inside a cell shouldn't inherit the row's line-height gap. */
-.reg-table .reg-sub {
+.data-table .reg-sub {
     margin-top: .1rem;
     line-height: 1.3;
 }
 
-.reg-table .badge {
+.data-table .badge {
     font-weight: 500;
 }
 
-/* --- PDF preview pane --------------------------------------------------- */
-
-.pdf-preview-body {
+/* One firm per line: name left, contact right, both truncating. The name
+   column wins the space (flex: 1 1 auto against the contact's 0 1 auto)
+   because it's what you scan the list for. Tighter than a default
+   list-group-item so three cards' worth of rows stay compact. */
+.contractor-row {
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    overflow: auto;               /* a tall drawing scrolls inside the card */
-    background: var(--app-canvas);
-    padding: .75rem;
+    align-items: baseline;
+    gap: .75rem;
+    padding-top: .45rem;
+    padding-bottom: .45rem;
 }
 
-.pdf-preview-body canvas {
-    max-width: 100%;
-    background: #fff;
-    box-shadow: 0 1px 4px rgba(16, 24, 40, .18);
+.contractor-row > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
-/* Page counter sits inside a btn-group, so it needs to stop looking clickable. */
-.pdf-preview-page {
-    pointer-events: none;
-    font-variant-numeric: tabular-nums;
-    min-width: 4.25rem;
+.contractor-row > :last-child {
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: right;
 }
 
-/* Reference detail pinned to the bottom of the project nav card. Stacked
-   label-over-value rather than two columns — "Projektleder" is too long to
-   sit beside its value in a col-3. */
-.project-meta {
-    margin: 0;
-    padding: .85rem 1rem;
-    border-top: 1px solid var(--app-border);
+/* Activity feed row: icon, text, relative time. Same vertical rhythm as
+   .contractor-row so the two cards beside each other stay in step. */
+.activity-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding-top: .45rem;
+    padding-bottom: .45rem;
 }
 
-.project-meta dt {
-    font-size: .75rem;
-    font-weight: 400;
-    color: var(--app-muted);
+/* The default 1.15rem icon is drawn for nav links and reads heavy beside
+   .9rem body text. */
+.activity-row .app-icon {
+    width: 1rem;
+    height: 1rem;
 }
 
-.project-meta dd {
-    margin: 0 0 .65rem;
+/* --- One type scale for the three project header cards ------------------ */
+
+/* Without this the cards inherit different sizes: .project-meta sets its own
+   .9rem, while a firm name and an activity line have no rule at all and fall
+   back to the 1rem body size — so the firm names rendered visibly larger than
+   the values beside them. */
+.project-meta,
+.contractor-row,
+.activity-row {
     font-size: .9rem;
 }
 
-.project-meta dd:last-child {
-    margin-bottom: 0;
+/* Secondary text in those cards: one size, one grey. Bootstrap's
+   .small + .text-body-secondary gave a different size *and* a different hue
+   — .875em (an em, so it compounds against the parent) in the neutral
+   --bs-secondary-color rather than our cooler --app-muted. */
+.project-meta dt,
+.card-meta-muted {
+    font-size: .8125rem;
+    font-weight: 400;
+    color: var(--app-muted);
 }
 
-/* Section nav inside a project. Same shape as the sidebar rail, inverted for
-   a light card: tinted pill instead of a solid Bootstrap list-group block. */
-.project-nav {
-    display: flex;
-    flex-direction: column;
-    gap: .125rem;
-    padding: .5rem;
-}
-
-.project-nav-link {
-    display: flex;
+/* Overflow-menu trigger in a card header. Deliberately quiet — it sits beside
+   the card's title and shouldn't compete with it, so it only gains a
+   background on hover or while its menu is open. */
+.btn-kebab {
+    display: inline-flex;
     align-items: center;
-    gap: .7rem;
-    width: 100%;
-    min-height: 44px;          /* touch target */
-    padding: .55rem .7rem;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
     border: 0;
-    border-radius: .55rem;
+    border-radius: .4rem;
     background: transparent;
     color: var(--app-muted);
-    font-size: .925rem;
-    font-weight: 400;
-    text-align: left;
-    transition: background-color .12s ease, color .12s ease;
+    line-height: 1;
 }
 
-.project-nav-link:hover {
+.btn-kebab:hover,
+.btn-kebab.show {
     background: var(--app-canvas);
     color: var(--bs-body-color);
 }
 
-.project-nav-link.active {
-    background: var(--bs-primary-bg-subtle);
-    color: var(--app-accent-dk);
-    font-weight: 500;
-}
-
-.project-nav-link .app-icon { opacity: .8; }
-.project-nav-link.active .app-icon { opacity: 1; }
-
-.project-nav-link:focus-visible {
+.btn-kebab:focus-visible {
     outline: 2px solid var(--app-accent-dk);
-    outline-offset: -2px;
+    outline-offset: 1px;
 }
 
-.project-nav-count {
-    margin-left: auto;
-    padding: .05rem .45rem;
-    min-width: 1.7rem;
-    border-radius: 999px;
-    background: var(--app-canvas);
-    color: var(--app-muted);
-    font-size: .75rem;
-    font-weight: 500;
-    text-align: center;
+/* Reference detail in the project header cards: label left, value right, one
+   row each. A grid rather than floats or a flex row per pair, so the value
+   column starts at the same x on every row regardless of label length.
+
+   max-content sizes column one to the longest label ("Projektleder"), and
+   minmax(0, 1fr) lets the value column actually shrink — a plain 1fr refuses
+   to go below its content's min width and a long address would push the card
+   wider than its column.
+
+   No padding of its own: it lives inside a .card-body, which supplies it. */
+.project-meta {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 1rem;
+    row-gap: .45rem;
+    align-items: baseline;
+    margin: 0;
 }
 
-.project-nav-link:hover .project-nav-count,
-.project-nav-link.active .project-nav-count {
-    background: #fff;
+/* Size and colour come from the shared card scale below; only the wrapping
+   rule is specific to a label. */
+.project-meta dt {
+    white-space: nowrap;
 }
 
-.project-nav-link.active .project-nav-count {
-    color: var(--app-accent-dk);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .project-nav-link { transition: none; }
+/* row-gap handles the spacing, so no per-row margin to zero out on the last
+   one any more. */
+.project-meta dd {
+    margin: 0;
+    text-align: right;
+    /* An address with no spaces to break on wraps instead of overflowing. */
+    overflow-wrap: anywhere;
 }
 
 /* --- Placeholder screens (Oversigt / Registreringer / Rapporter) -------- */
@@ -543,19 +767,6 @@ a.project-card:focus-visible {
 
 .auth-card .brand-dot {
     flex-shrink: 0;
-}
-
-/* --- Overview stat tiles ------------------------------------------------ */
-
-.stat-value {
-    font-size: 1.75rem;
-    font-weight: 600;
-    line-height: 1.1;
-}
-
-.stat-label {
-    font-size: .8125rem;
-    color: var(--app-muted);
 }
 
 /* --- Registration photos ------------------------------------------------ */
@@ -589,6 +800,168 @@ a.project-card:focus-visible {
 
 /* Rows are navigable via the link in the subject cell; the pointer cursor
    signals that the whole row responds in the viewer. */
-.reg-table .reg-row {
+/* Only rows that actually respond to a click get the pointer. data-row-href
+   is handled by rows.js; .reg-row[data-page] by viewer.js. A row with neither
+   would otherwise advertise a click that goes nowhere. */
+.data-table tr[data-row-href],
+.data-table .reg-row[data-page] {
     cursor: pointer;
+}
+
+/* --- Mothership (internal console) -------------------------------------- */
+
+/* A second, smaller design system for the pages only we see. Scoped under
+   .ms-* so nothing here can leak into a customer page.
+
+   The palette is the point: violet on near-black, against the customer app's
+   accent navy on graphite. Both are open in adjacent tabs, and the tab where
+   a mistake is a paying customer's problem has to be identifiable from the
+   corner of your eye. Violet is also outside the discipline palette
+   (red/orange/blue/cyan/green), so nothing here can be misread as data. */
+.ms-body {
+    --ms-bar: #101014;
+    --ms-accent: #8B6BFF;
+    --ms-accent-dk: #5B3FD6;
+    --ms-accent-rgb: 139, 107, 255;
+
+    background-color: #F5F5F8;
+}
+
+.ms-shell {
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+}
+
+.ms-topbar {
+    background: var(--ms-bar);
+    color: #fff;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+
+.ms-brand {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    flex-shrink: 0;
+}
+
+.ms-brand-dot {
+    width: .8rem;
+    height: .8rem;
+    border-radius: 50%;
+    background: var(--ms-accent);
+    box-shadow: 0 0 0 4px rgba(var(--ms-accent-rgb), .25);
+    flex-shrink: 0;
+}
+
+.ms-brand-sub {
+    font-size: .8125rem;
+    color: rgba(255, 255, 255, .45);
+    border-left: 1px solid rgba(255, 255, 255, .15);
+    padding-left: .75rem;
+}
+
+.ms-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--ms-accent-dk);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 500;
+}
+
+/* Buttons and links inside Mothership take the violet rather than inheriting
+   the customer app's navy primary. */
+.ms-body .btn-primary {
+    --bs-btn-bg: var(--ms-accent-dk);
+    --bs-btn-border-color: var(--ms-accent-dk);
+    --bs-btn-hover-bg: #4A32B4;
+    --bs-btn-hover-border-color: #4A32B4;
+    --bs-btn-active-bg: #3E2A99;
+    --bs-btn-active-border-color: #3E2A99;
+}
+
+.ms-body a:not(.btn):not(.ms-brand):not(.dropdown-item) {
+    color: var(--ms-accent-dk);
+}
+
+/* Compact tiles. The customer app's .stat-tile is deliberately bigger and
+   softer — it is read on a phone at arm's length on a building site; this row
+   is read on a laptop. */
+.ms-tile {
+    border: 1px solid var(--app-border);
+    border-radius: .625rem;
+    background: #fff;
+    padding: .875rem 1rem;
+    height: 100%;
+}
+
+.ms-tile-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--ms-accent-dk);
+}
+
+.ms-tile-label {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--app-muted);
+    margin-top: .15rem;
+}
+
+/* Suspended clients stay readable but visibly out of play — greyed rather
+   than hidden, because a suspended customer is still one you have to
+   remember exists. */
+.ms-row-suspended {
+    background: #FAFAFB;
+}
+
+.ms-row-suspended .ms-client-name {
+    color: var(--app-muted);
+    text-decoration: line-through;
+}
+
+.ms-client-name {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.ms-table td,
+.ms-table th {
+    vertical-align: middle;
+}
+
+.ms-table th {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--app-muted);
+    font-weight: 500;
+}
+
+/* The invite link is shown so a client whose mail bounced can be helped by
+   hand. Monospace and selectable, because it exists to be copied. */
+.ms-invite-link {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .75rem;
+    word-break: break-all;
+    color: var(--app-muted);
 }

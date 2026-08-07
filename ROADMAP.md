@@ -282,9 +282,37 @@ Ends with: upload a real drawing to a real project and pin notes on it.
 
 ### Phase 6 — Production readiness
 
+Prepared for a PythonAnywhere test server on 2026-08-07 (S3, Postgres and
+real email deliberately deferred):
+
+- Security settings behind `if not DEBUG` — secure cookies, SSL redirect, and
+  `SECURE_PROXY_SSL_HEADER`, which PythonAnywhere **requires**: it terminates
+  TLS at its proxy, so without it `SECURE_SSL_REDIRECT` loops forever. HSTS is
+  left off on purpose; it is cached by browsers and cannot be withdrawn.
+- `LOGGING` to stderr. With `DEBUG=False` and no mail backend, an unhandled
+  exception was otherwise silent.
+- `core/checks.py` — a deploy check that **errors** if `SITE_URL` is still
+  localhost with `DEBUG` off. Invitation links are built from it, so the
+  failure would otherwise land on a client as an unexplained connection error.
+- Requirements pinned with `==`. reportlab draws the PDF stamps; an unpinned
+  install breaks exports on the server while they still work locally.
+- Bare `404.html` / `500.html`, standalone rather than extending `base.html`:
+  `handler500` renders with no context processors, so `brand` and `user` are
+  unavailable there.
+- Dead `MS_*` / `TOKEN_ENC_KEY` entries purged from `.env`.
+
+Static files are PythonAnywhere's own mapping plus `collectstatic`, so no
+WhiteNoise. Nothing under `MEDIA_ROOT` is ever served directly — every file
+goes through a login- and organization-checked view — so there is no media
+mapping to configure and uploads cannot leak by URL.
+
+Still open:
+
 - **Postgres.** SQLite was chosen for a single-worker demo; a product with
-  concurrent field writes shouldn't ship on it. Do this before deploying,
-  not after.
+  concurrent field writes shouldn't ship on it. Sharper than it looks:
+  `SESSION_SAVE_EVERY_REQUEST = True` means *every request is a database
+  write*, and SQLite serialises writes across the whole file. This is the
+  first thing that will contend once several people are on site at once.
 - Tests. **Started early rather than deferred** — `core/tests.py` has 23
   tests covering tenant isolation (org A cannot read, edit, delete or export
   anything of org B's), the admin/member permission split, the invitation
@@ -347,6 +375,47 @@ Kept with their reasoning so they don't get re-litigated.
   within each project, allocated under a row lock on the project. This is
   how people refer to one on site and in reports.
 
+### Internal console decisions, answered 2026-08-07
+
+- **D13 — Where the internal admin lives → `mothership`, an app in this
+  project, gated on `is_superuser`.** Not a second Django project: two
+  deploys and duplicated models for a two-person tool. Not `is_staff`: that
+  flag also opens Django admin and is the kind of thing you eventually hand
+  a support person. Non-superusers get **404, not 403**, so a customer
+  poking at URLs learns nothing about what's there. Named Mothership over
+  Kontroltårnet/Bagbordet because it can never collide with construction
+  vocabulary — "tårn" and "kran" are words on a real site.
+- **D14 — How far Mothership sees into a client → counts and project names,
+  nothing else.** No registration text, no photos, no drawings, no
+  impersonation. D6 says organizations are 100% separated; this is the one
+  place that reads across that line and the hole is deliberately exactly
+  this wide. Project names are in because a support call starts with "which
+  site are you on?". Impersonation was offered and declined.
+- **D15 — A new client is seeded with the five standard disciplines, not
+  with contractors.** A registration requires both, so an empty
+  organization can't file anything (friction 4). The five faggrupper are
+  the same on every Danish site and live in `core/defaults.py`;
+  subcontractors are genuinely per-customer and can't be guessed, so the
+  client detail page *warns* about missing contractors instead. Marked
+  provisional by Martin — revisit once there are real clients.
+- **D17 — An account is either ours or a customer's; each has one home.**
+  Superusers land in Mothership on login and are redirected back to it from
+  anywhere in `core`; customers land in the app and never see that
+  Mothership exists. There is no link between the two halves in either
+  direction. This costs nothing: a superuser has no organization, so every
+  customer page is scoped to nothing and renders empty anyway — the old
+  `Internt` sidebar entry led to a screen of zeros. Enforced in
+  `accounts.views.LoginView` (the default destination, so an explicit
+  `?next=` still wins) and `accounts.middleware.SuperuserHomeMiddleware`
+  (bookmarks and typed URLs). **To look inside the customer app, use a
+  seeded account, not the superuser** — `manage.py seed_demo` prints them.
+- **D16 — Suspension is enforced per request, not only at login.** Sessions
+  last 30 days and slide forward (§4 phase 1), so a login-time check alone
+  would leave a suspended customer working for a month.
+  `accounts.middleware.SuspendedOrganizationMiddleware` costs one indexed
+  lookup per authenticated request; that is the price of "suspended" meaning
+  now rather than eventually.
+
 **Calls made without asking** (say the word and any of these change): a
 registration carries a short `subject` plus an optional longer
 `description`; `deadline` is optional; photos are many-per-registration with
@@ -375,3 +444,105 @@ Worth stating so it doesn't get re-litigated:
 - Company scoping and the `company_admin_required` decorator.
 - Mobile-first as the primary constraint (SPEC.md) — more true now, not
   less, if field workers are the main users.
+
+---
+
+## 7. Mothership — the internal console (built 2026-08-07)
+
+The dashboard Martin and his partner use to run the SaaS, as opposed to the
+app their customers use. `/mothership/`, superuser-only, its own Django app.
+Decisions and their reasoning are D13–D17 in §5.
+
+**The two halves do not connect.** A superuser logs in and lands here; a
+customer logs in and lands in the app. Neither can navigate to the other, and
+`createsuperuser` is the only way an account ends up on this side (D17).
+
+**What it does:**
+
+- **Client list** — every organization with user, project and registration
+  counts, last activity, and search by name. Suspended clients are greyed
+  rather than hidden; a client with no users is badged, because that is the
+  state a half-finished setup leaves behind.
+- **Create a client** — one form produces the organization, its five
+  standard faggrupper, and its first org admin. The admin gets either an
+  emailed invitation (the normal path; keeps D1's "nobody but the owner
+  knows the password") or a password set on the spot.
+- **Client detail** — counts, project names and status, users with last
+  login, and open invitations *including the accept link*, so a client whose
+  mail bounced can be helped by hand. A warning banner fires when a client
+  can't yet file a registration (no users / no faggrupper / no firmaer).
+- **Suspend and reactivate** — flips `Organization.is_active`, which was on
+  the model but enforced nowhere. Now enforced twice: login is refused, and
+  an open session ends on its next request (D16).
+
+**Where things are:** `mothership/{views,forms,urls}.py`,
+`templates/mothership/`, the `.ms-*` block at the end of `micki.css`, and
+`core/defaults.py` (the one list of standard disciplines, shared with
+`seed_demo`). The shell is deliberately *not* `base.html` — violet on black
+against the customer app's navy on graphite, and no side rail, because both
+will be open in adjacent tabs and only one of them can break a paying
+customer.
+
+**Friction from the previous handoff — all four closed:**
+
+1. Creating an org admin took two saves → one form, `ClientCreateForm`.
+2. `username` must equal the email → the form sets `username` from `email`;
+   it is never typed. Tested.
+3. An org admin with no organization returned 500 → `org_admin_required` now
+   requires both halves (a 403, since there's nothing to administer), and
+   `_disciplines(request)` joins the scoping helpers so the remaining call
+   sites return an empty queryset instead of dereferencing None. The pages a
+   fresh `createsuperuser` account lands on are tested.
+4. A fresh organization couldn't file anything → disciplines are seeded
+   (D15) and missing contractors are warned about on the client detail page.
+
+The two smaller fixes offered last time (`add_fieldsets` on
+`CustomUserAdmin`, a `create_org` command) are now superseded and not worth
+doing.
+
+### Next up
+
+Phase 5 — **Rapporter**, the last placeholder page. `core.views.reports`
+still renders `core/placeholder.html`, and `pdf_export.stamp_registrations`
+already does the expensive part.
+
+Open questions for Mothership itself, none of them urgent, none of them
+specced: billing/subscription state, per-client usage over time, and an
+audit trail of what a superuser did in here. Ask before building any of
+them.
+
+### State as of this handoff
+
+- **Phases 1–4 done, plus Mothership.** Phase 5 (Rapporter) and phase 6
+  (Postgres, S3, deploy) are open.
+- **The database is empty and intentionally so.** Martin deleted it and is
+  populating it himself. Schema is migrated; there are **zero users**, so
+  `createsuperuser` (which now also gets you into Mothership) or
+  `manage.py seed_demo` is needed before anything is reachable.
+- **92 tests, all passing** — 56 in `core/tests.py`, 36 in
+  `mothership/tests.py` (the superuser gate, client creation, suspension at
+  both layers, where each kind of account lands, and the orgless-user 500s).
+  The suite runs in ~1.6s (MD5 hashing under `if "test" in sys.argv`).
+- `media/` holds ~21 orphaned files Martin is deleting by hand — not a bug.
+- Every model now inherits `core.base.BaseModel` (created_at/updated_at)
+  **except `User`**, which keeps `date_joined`. `created_at` is
+  `auto_now_add`, so it cannot be backdated — importing historical data
+  needs an UPDATE after insert. Any `save(update_fields=[...])` must list
+  `"updated_at"` or the timestamp silently goes stale; there are tests
+  pinning this.
+
+### Working with Martin
+
+- **He commits to git himself.** Never run `git add`/`commit`/`push`/`tag`.
+  Read-only git is fine. Finish the work, run the tests, report, and leave
+  it in the working tree.
+- **Never run destructive requests against his dev database.** A POST to a
+  delete endpoint during verification cost him a drawing on 2026-08-07; use
+  the test database.
+- UI is Danish, hardcoded (no gettext). URL paths and internal identifiers
+  stay English, including the `micki:*` HTMX event names.
+- Bootstrap 5 + HTMX, both vendored — no CDN, no React. He's fluent in both.
+- Mobile-first: field workers on phones are the primary users.
+- He iterates screen by screen and asks for small changes; he responds well
+  to being told when something he asked for conflicts with something else
+  on the page, so say so rather than silently reconciling it.

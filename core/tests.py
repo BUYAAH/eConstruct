@@ -16,7 +16,7 @@ from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import timezone, translation
 
 from accounts.models import Invitation
 from core.models import (
@@ -97,6 +97,71 @@ def make_org(slug, name=None):
         "drawing": drawing, "registration": registration,
         "discipline": discipline, "contractor": contractor,
     }
+
+
+class BaseModelTests(MediaTestCase):
+    """The two timestamp behaviours that fail silently rather than loudly."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = make_org("alpha")
+
+    def test_every_model_has_the_timestamps(self):
+        from django.apps import apps
+
+        from core.base import BaseModel
+
+        exempt = {"User"}  # AbstractUser already carries date_joined
+        for app in ("core", "accounts"):
+            for model in apps.get_app_config(app).get_models():
+                if model.__name__ in exempt:
+                    continue
+                with self.subTest(model=model.__name__):
+                    self.assertTrue(issubclass(model, BaseModel))
+
+    def test_created_at_cannot_be_backdated(self):
+        """auto_now_add ignores a supplied value rather than raising. Asserted
+        so the behaviour is a decision on record, not a surprise during an
+        import — backdating needs an UPDATE after insert."""
+        wanted = timezone.now() - timedelta(days=365)
+        contractor = Contractor.objects.create(
+            organization=self.a["org"], name="Backdated ApS", created_at=wanted
+        )
+        contractor.refresh_from_db()
+        self.assertNotEqual(contractor.created_at, wanted)
+        self.assertGreater(contractor.created_at, timezone.now() - timedelta(minutes=1))
+
+    def test_update_fields_without_updated_at_leaves_it_stale(self):
+        """Documents the trap the call sites have to work around: auto_now is
+        skipped for fields absent from update_fields, with no error."""
+        contractor = self.a["contractor"]
+        before = contractor.updated_at
+        contractor.name = "Omdøbt"
+        contractor.save(update_fields=["name"])
+        contractor.refresh_from_db()
+        self.assertEqual(contractor.updated_at, before)
+
+    def test_drawing_upload_bumps_updated_at(self):
+        """The upload view saves page_count with update_fields; it must list
+        updated_at too."""
+        self.client.force_login(self.a["admin"])
+        self.client.post(
+            reverse("core:drawing_upload", args=[self.a["project"].slug]),
+            {"name": "Tidsstempel", "file": SimpleUploadedFile("t.pdf", MINIMAL_PDF)},
+        )
+        drawing = Drawing.objects.get(name="Tidsstempel")
+        self.assertGreaterEqual(drawing.updated_at, drawing.created_at)
+
+    def test_accepting_an_invitation_bumps_updated_at(self):
+        invitation = Invitation.objects.create(organization=self.a["org"], email="ny@alpha.dk")
+        original = invitation.updated_at
+        self.client.post(
+            reverse("accounts:accept_invitation", args=[invitation.token]),
+            {"first_name": "Ny", "last_name": "B",
+             "password1": "korrekt-hest-batteri", "password2": "korrekt-hest-batteri"},
+        )
+        invitation.refresh_from_db()
+        self.assertGreater(invitation.updated_at, original)
 
 
 class TenantIsolationTests(MediaTestCase):
@@ -360,6 +425,31 @@ class ProgressTests(MediaTestCase):
         )
         self.assertEqual(empty.progress, 0)
 
+    def test_annotated_progress_matches_the_unannotated_fallback(self):
+        """progress has two paths since with_stats() landed — read from the
+        annotation when it's there, two queries when it isn't. They must not
+        disagree, or a card and a detail page would show different numbers."""
+        project = self.a["project"]
+        for i in range(3):
+            Registration.objects.create(
+                project=project, discipline=self.a["discipline"], subject=f"r{i}",
+                assigned_contractor=self.a["contractor"],
+            )
+        self.a["registration"].mark_approved()
+
+        plain = Project.objects.get(pk=project.pk)
+        annotated = Project.objects.with_stats().get(pk=project.pk)
+        self.assertEqual(annotated.progress, plain.progress)
+        self.assertEqual(annotated.progress, 25)
+
+    def test_with_stats_counts_are_not_multiplied_by_joins(self):
+        """contractors is a M2M and registrations a reverse FK; joining both
+        without distinct=True makes each count the other's multiple."""
+        annotated = Project.objects.with_stats().get(pk=self.a["project"].pk)
+        self.assertEqual(annotated.contractor_count, 1)
+        self.assertEqual(annotated.registration_count, 1)
+        self.assertEqual(annotated.drawing_count, 1)
+
     def test_progress_is_the_approved_share(self):
         project = self.a["project"]
         for i in range(3):
@@ -457,6 +547,30 @@ class DrawingTests(MediaTestCase):
         self.assertEqual(response.status_code, 206)
         self.assertEqual(response.content, MINIMAL_PDF[-5:])
 
+    def test_project_detail_query_count_does_not_grow_with_drawings(self):
+        """The Tegninger list used to call drawing.registrations.count in the
+        template — one query per drawing. Comparing the same page at 1 and 4
+        drawings catches a regression that a fixed-count assertion wouldn't."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        url = reverse("core:project_detail", args=[self.a["project"].slug])
+        self.client.get(url)  # warm any one-off queries (session, user)
+
+        with CaptureQueriesContext(connection) as with_one:
+            self.client.get(url)
+
+        for i in range(3):
+            Drawing.objects.create(
+                project=self.a["project"], name=f"ekstra {i}",
+                file=SimpleUploadedFile(f"x{i}.pdf", MINIMAL_PDF), page_count=1,
+            )
+
+        with CaptureQueriesContext(connection) as with_four:
+            self.client.get(url)
+
+        self.assertEqual(len(with_four), len(with_one))
+
     def test_export_returns_a_pdf(self):
         for mode in ("summary", "inline"):
             with self.subTest(mode=mode):
@@ -465,6 +579,42 @@ class DrawingTests(MediaTestCase):
                 )
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(response.content.startswith(b"%PDF-"))
+
+
+class PinPositionTests(MediaTestCase):
+    """A pin's position is a Decimal that ends up inside a CSS declaration.
+
+    Django formats numbers for the active locale and LANGUAGE_CODE is da-dk,
+    so an unguarded `{{ r.x_pct }}` renders `left: 46,733%`. A comma is not a
+    valid CSS number: the browser discards the whole declaration and the pin
+    falls back to its default position, the top-left corner.
+
+    Worth a test rather than a comment because of how it fails — it looks
+    exactly like a broken coordinate save, while the stored value and the
+    JS that computed it are both correct. Anything reintroducing locale
+    formatting here (a template edit, a different LANGUAGE_CODE) puts every
+    pin on every drawing back in the corner, silently.
+    """
+
+    def setUp(self):
+        self.a = make_org("alpha")
+        self.client.force_login(self.a["admin"])
+        # Values with a fractional part in every position, so a comma cannot
+        # hide: 10.000 would survive truncation, 46.733 will not.
+        Registration.objects.filter(pk=self.a["registration"].pk).update(
+            x_pct="46.733", y_pct="27.870"
+        )
+
+    def test_coordinates_render_with_a_dot_under_a_danish_locale(self):
+        with translation.override("da"):
+            response = self.client.get(
+                reverse("core:pins", args=[self.a["drawing"].pk]), {"page": 1}
+            )
+        content = response.content.decode()
+        self.assertIn("left: 46.733%", content)
+        self.assertIn("top: 27.870%", content)
+        self.assertNotIn("46,733", content)
+        self.assertNotIn("27,870", content)
 
 
 class PhotoTests(MediaTestCase):

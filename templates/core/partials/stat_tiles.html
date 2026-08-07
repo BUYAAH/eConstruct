@@ -1,0 +1,68 @@
+{% comment %}
+The stat bar, shared by Oversigt and Projekter. Counts come from
+core.views._stat_context and are organization-wide on both pages.
+
+Colour is not decoration here: each of the three registration tiles carries
+the same hue as the status badge it counts — red for overskredet, amber for
+åben, blue for løst — so a number and a badge that mean the same thing look
+the same. Aktive projekter is deliberately neutral, because it isn't a
+status.
+
+The three status tiles link to Registreringer pre-filtered; the project
+count doesn't, because there's no matching filter on the projects list and a
+link that lands somewhere unfiltered would be a small lie.
+{% endcomment %}
+<div class="row g-3 mb-4 stat-row">
+
+    <div class="col-6 col-lg-3">
+        <a class="stat-tile stat-tile-danger {% if not overdue_count %}is-zero{% endif %}"
+           href="{% url 'core:registrations' %}?overdue=1">
+            <span class="icon-square">
+                <svg class="app-icon"><use href="#i-clock"></use></svg>
+            </span>
+            <span class="stat-body">
+                <span class="stat-value">{{ overdue_count }}</span>
+                <span class="stat-label">Overskredet</span>
+            </span>
+        </a>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <a class="stat-tile stat-tile-warning {% if not open_count %}is-zero{% endif %}"
+           href="{% url 'core:registrations' %}?status=open">
+            <span class="icon-square">
+                <svg class="app-icon"><use href="#i-registrations"></use></svg>
+            </span>
+            <span class="stat-body">
+                <span class="stat-value">{{ open_count }}</span>
+                <span class="stat-label">Åbne registreringer</span>
+            </span>
+        </a>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <a class="stat-tile stat-tile-info {% if not resolved_count %}is-zero{% endif %}"
+           href="{% url 'core:registrations' %}?status=resolved">
+            <span class="icon-square">
+                <svg class="app-icon"><use href="#i-check"></use></svg>
+            </span>
+            <span class="stat-body">
+                <span class="stat-value">{{ resolved_count }}</span>
+                <span class="stat-label">Afventer godkendelse</span>
+            </span>
+        </a>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile stat-tile-neutral">
+            <span class="icon-square">
+                <svg class="app-icon"><use href="#i-building"></use></svg>
+            </span>
+            <span class="stat-body">
+                <span class="stat-value">{{ project_count }}</span>
+                <span class="stat-label">Aktive projekter</span>
+            </span>
+        </div>
+    </div>
+
+</div>

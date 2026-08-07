@@ -1,0 +1,138 @@
+{% extends "mothership/base.html" %}
+
+{% block title %}Ny kunde — Mothership{% endblock %}
+
+{% block content %}
+<nav aria-label="brødkrumme" class="mb-2">
+    <a class="small" href="{% url 'mothership:clients' %}">&larr; Kunder</a>
+</nav>
+<h1 class="h4 mb-3">Ny kunde</h1>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-7">
+            <div class="card mb-3">
+                <div class="card-header">Firmaet</div>
+                <div class="card-body">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">
+                        {{ form.name.label }}
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                    {% endif %}
+
+                    <div class="form-check mt-3">
+                        {{ form.seed_disciplines }}
+                        <label class="form-check-label small" for="{{ form.seed_disciplines.id_for_label }}">
+                            {{ form.seed_disciplines.label }}
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Første administrator</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label" for="{{ form.admin_first_name.id_for_label }}">
+                                {{ form.admin_first_name.label }}
+                            </label>
+                            {{ form.admin_first_name }}
+                            {% if form.admin_first_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.admin_first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label" for="{{ form.admin_last_name.id_for_label }}">
+                                {{ form.admin_last_name.label }}
+                            </label>
+                            {{ form.admin_last_name }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ form.admin_email.id_for_label }}">
+                                {{ form.admin_email.label }}
+                            </label>
+                            {{ form.admin_email }}
+                            {% if form.admin_email.errors %}
+                            <div class="text-danger small mt-1">{{ form.admin_email.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                E-mailen er også brugernavnet, så adressen kan kun tilhøre én kunde.
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <span class="form-label d-block">{{ form.access.label }}</span>
+                            {% for choice in form.access %}
+                            <div class="form-check">
+                                {{ choice.tag }}
+                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                    {{ choice.choice_label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        {% comment %}
+                        Only relevant for the "set a password" branch, but
+                        rendered unconditionally rather than toggled by JS —
+                        the form validates the same either way, and there is
+                        no script on this page to get out of step with it.
+                        {% endcomment %}
+                        <div class="col-sm-8">
+                            <label class="form-label" for="{{ form.password.id_for_label }}">
+                                {{ form.password.label }}
+                            </label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                            <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">Udfyldes kun hvis du sætter adgangskoden nu.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <div class="card">
+                <div class="card-header">Hvad der sker</div>
+                <div class="card-body small text-body-secondary">
+                    <ol class="ps-3 mb-0">
+                        <li class="mb-2">
+                            Firmaet oprettes som en ny, fuldt adskilt organisation. Ingen data
+                            deles med andre kunder.
+                        </li>
+                        <li class="mb-2">
+                            De fem standard faggrupper oprettes, hvis du lader feltet stå
+                            markeret. Uden faggrupper kan kunden ikke oprette registreringer.
+                        </li>
+                        <li class="mb-2">
+                            Administratoren får adgang — enten via et invitationslink, hvor
+                            de selv vælger adgangskode, eller med den adgangskode du sætter her.
+                        </li>
+                        <li>
+                            <strong>Firmaer (underentreprenører) oprettes ikke.</strong> Dem
+                            opretter kunden selv under Indstillinger — en registrering kræver
+                            både en faggruppe og et firma på projektet.
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary">Opret kunde</button>
+        <a class="btn btn-outline-secondary" href="{% url 'mothership:clients' %}">Annullér</a>
+    </div>
+</form>
+{% endblock %}

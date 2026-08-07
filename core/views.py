@@ -5,7 +5,7 @@ from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db import models
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -27,10 +27,20 @@ from .pdf_export import stamp_registrations
 
 
 def org_admin_required(view):
+    """Admin of an organization — both halves required.
+
+    `User.organization` is nullable, deliberately: a superuser running
+    Mothership is not a customer and belongs to no tenant. Every view behind
+    this decorator then goes on to read `org.users`, `org.disciplines` or
+    `org.contractors`, so an admin flag without an organization used to be an
+    AttributeError on None. There is nothing for such a user to administer
+    here, so it is the same 403 as any other non-admin.
+    """
+
     @wraps(view)
     @login_required
     def wrapper(request, *args, **kwargs):
-        if not request.user.is_org_admin:
+        if not (request.user.is_org_admin and request.user.organization_id):
             return HttpResponseForbidden("Kræver administratoradgang.")
         return view(request, *args, **kwargs)
 
@@ -66,28 +76,48 @@ def _registrations(request):
     return Registration.objects.filter(project__in=_projects(request))
 
 
+def _disciplines(request):
+    """The faggrupper the user may see.
+
+    A helper rather than `request.user.organization.disciplines` at the call
+    site, for the same reason as the four above: `User.organization` is
+    nullable (a superuser belongs to no tenant), so the attribute chain was an
+    AttributeError on None for anyone without one. Filtering on the id instead
+    returns an empty queryset — every caller keeps a queryset and none of them
+    grows a None branch — and saves the query that dereferencing the FK costs.
+    """
+    return Discipline.objects.filter(organization_id=request.user.organization_id)
+
+
 # --- Overview ----------------------------------------------------------------
+
+
+def _stat_context(request):
+    """The four numbers in the stat bar on Projekter.
+
+    Organization-wide rather than scoped to what's listed, so a figure means
+    the same thing wherever the bar ends up being shown.
+    """
+    registrations = _registrations(request)
+    return {
+        "project_count": _projects(request).filter(status=Project.ACTIVE).count(),
+        "open_count": registrations.filter(status=Registration.OPEN).count(),
+        "resolved_count": registrations.filter(status=Registration.RESOLVED).count(),
+        "overdue_count": registrations.exclude(status=Registration.APPROVED)
+        .filter(deadline__lt=timezone.localdate())
+        .count(),
+    }
 
 
 @login_required
 def overview(request):
-    today = timezone.localdate()
-    registrations = _registrations(request)
-    open_qs = registrations.exclude(status=Registration.APPROVED)
-
-    return render(
-        request,
-        "core/overview.html",
-        {
-            "project_count": _projects(request).filter(status=Project.ACTIVE).count(),
-            "open_count": registrations.filter(status=Registration.OPEN).count(),
-            "resolved_count": registrations.filter(status=Registration.RESOLVED).count(),
-            "overdue_count": open_qs.filter(deadline__lt=today).count(),
-            "recent": registrations.select_related(
-                "project", "discipline", "assigned_contractor", "author"
-            )[:8],
-        },
+    active = (
+        _projects(request)
+        .filter(status=Project.ACTIVE)
+        .select_related("manager")
+        .with_stats()
     )
+    return render(request, "core/overview.html", {"active_projects": active})
 
 
 # --- Projects ----------------------------------------------------------------
@@ -95,17 +125,8 @@ def overview(request):
 
 @login_required
 def projects(request):
-    qs = _projects(request).select_related("manager").annotate(
-        drawing_count=Count("drawings", distinct=True),
-        registration_count=Count("registrations", distinct=True),
-        open_count=Count(
-            "registrations",
-            filter=Q(registrations__status=Registration.OPEN),
-            distinct=True,
-        ),
-        contractor_count=Count("contractors", distinct=True),
-    )
-    return render(request, "core/projects.html", {"projects": qs})
+    qs = _projects(request).select_related("manager").with_stats()
+    return render(request, "core/projects.html", {"projects": qs, **_stat_context(request)})
 
 
 @org_admin_required
@@ -158,9 +179,13 @@ def project_detail(request, slug):
         {
             "project": project,
             "registrations": registrations,
-            "drawings": project.drawings.all(),
+            # Annotated, not drawing.registrations.count in the template —
+            # that ran a query per drawing. select_related for the same reason:
+            # the table shows who uploaded each one.
+            "drawings": project.drawings.select_related("uploaded_by").annotate(
+                registration_count=models.Count("registrations")
+            ),
             "open_count": registrations.filter(status=Registration.OPEN).count(),
-            "preview_drawing": project.drawings.first(),
         },
     )
 
@@ -181,7 +206,9 @@ def drawing_upload(request, slug):
                 drawing.name = request.FILES["file"].name.rsplit(".", 1)[0]
             drawing.save()
             drawing.page_count = _count_pages(drawing)
-            drawing.save(update_fields=["page_count"])
+            # updated_at must be listed explicitly: auto_now is skipped for
+            # fields absent from update_fields, silently.
+            drawing.save(update_fields=["page_count", "updated_at"])
             return redirect("core:project_detail", slug=project.slug)
     else:
         form = DrawingUploadForm()
@@ -220,7 +247,7 @@ def viewer(request, pk):
         {
             "drawing": drawing,
             "project": drawing.project,
-            "disciplines": request.user.organization.disciplines.all(),
+            "disciplines": _disciplines(request),
         },
     )
 
@@ -342,7 +369,7 @@ def registrations(request):
         {
             "registrations": qs,
             "projects": _projects(request),
-            "disciplines": request.user.organization.disciplines.all(),
+            "disciplines": _disciplines(request),
             "status_choices": Registration.STATUS_CHOICES,
             "selected": {
                 "status": status,
@@ -581,6 +608,9 @@ def drawing_registrations(request, pk):
             "registrations": drawing.registrations.select_related(
                 "discipline", "assigned_contractor", "author"
             ).prefetch_related("photos"),
+            # In the viewer a row jumps to the pin's page rather than
+            # navigating away from the drawing.
+            "row_jump": True,
         },
     )
 
@@ -677,7 +707,7 @@ def _disciplines_section(request, form=None):
     return render(
         request,
         "core/partials/disciplines_section.html",
-        {"disciplines": request.user.organization.disciplines.all(), "form": form or DisciplineForm()},
+        {"disciplines": _disciplines(request), "form": form or DisciplineForm()},
     )
 
 
@@ -730,7 +760,9 @@ def _contractors_section(request, form=None):
         request,
         "core/partials/contractors_section.html",
         {
-            "contractors": request.user.organization.contractors.all(),
+            "contractors": Contractor.objects.filter(
+                organization_id=request.user.organization_id
+            ),
             "contractor_form": form or ContractorForm(),
         },
     )

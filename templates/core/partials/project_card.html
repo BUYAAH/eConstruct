@@ -1,0 +1,61 @@
+{% comment %}
+One project card, shared by Projekter and Oversigt so the two can't drift.
+Expects a project annotated by ProjectQuerySet.with_stats() — the counts and
+`progress` both read from those annotations.
+
+The whole card is the link: it holds no other interactive element.
+{% endcomment %}
+<a class="card h-100 project-card text-decoration-none text-body"
+   href="{% url 'core:project_detail' p.slug %}">
+    <div class="card-body d-flex flex-column">
+
+        <div class="d-flex align-items-start gap-2 mb-1">
+            <h2 class="h6 mb-0 flex-grow-1">{{ p.name }}</h2>
+            <span class="badge text-bg-{{ p.status_class }} flex-shrink-0">{{ p.get_status_display }}</span>
+        </div>
+        <p class="small text-body-secondary mb-3">
+            {% if p.case_no %}Sag {{ p.case_no }}<br>{% endif %}{{ p.address|default:"&mdash;" }}
+        </p>
+
+        <div class="row g-0 text-center project-stats mb-3">
+            <div class="col">
+                <div class="fs-5 fw-semibold lh-1">{{ p.drawing_count }}</div>
+                <div class="small text-body-secondary">Tegninger</div>
+            </div>
+            <div class="col">
+                <div class="fs-5 fw-semibold lh-1">{{ p.contractor_count }}</div>
+                <div class="small text-body-secondary">Firmaer</div>
+            </div>
+            <div class="col">
+                <div class="fs-5 fw-semibold lh-1 {% if p.open_count %}text-warning-emphasis{% endif %}">
+                    {{ p.open_count }}
+                </div>
+                <div class="small text-body-secondary">Åbne reg.</div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <div class="d-flex justify-content-between small text-body-secondary mb-1">
+                <span>Fremdrift</span><span>{{ p.progress }}%</span>
+            </div>
+            <div class="progress" style="height: .4rem;" role="progressbar"
+                 aria-valuenow="{{ p.progress }}" aria-valuemin="0" aria-valuemax="100"
+                 aria-label="Fremdrift for {{ p.name }}">
+                <div class="progress-bar" style="width: {{ p.progress }}%;"></div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 small text-body-secondary mt-auto pt-3 border-top">
+            <svg class="app-icon flex-shrink-0"><use href="#i-building"></use></svg>
+            <span class="text-truncate">{{ p.manager|default:"Ingen projektleder" }}</span>
+            {% comment %}
+            "Redigeret", not "Ændret": updated_at is auto_now on Project, so it
+            moves when the project row is saved — a rename, a status change —
+            and not when a registration is added or a drawing uploaded. Calling
+            it "ændret" promised activity it doesn't track.
+            {% endcomment %}
+            <span class="ms-auto text-nowrap">Redigeret for {{ p.updated_at|timesince }} siden</span>
+        </div>
+
+    </div>
+</a>

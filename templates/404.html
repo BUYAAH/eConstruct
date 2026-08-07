@@ -1,0 +1,29 @@
+{% load static %}
+<!doctype html>
+{% comment %}
+Standalone, not an extension of base.html.
+
+Django renders 500.html with no context processors at all, so `brand`, `user`
+and the nav would all be empty there — and an error page that half-renders is
+worse than a plain one. 404 is kept identical to it so the two match.
+{% endcomment %}
+<html lang="da">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Siden findes ikke</title>
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/micki.css' %}">
+</head>
+<body class="d-flex align-items-center justify-content-center vh-100 text-center px-3">
+    <main>
+        <p class="display-6 mb-2">404</p>
+        <h1 class="h5 mb-3">Siden findes ikke</h1>
+        <p class="text-body-secondary mb-4">
+            Linket er forkert, eller det du leder efter er blevet slettet.
+        </p>
+        <a class="btn btn-primary" href="/">Tilbage til forsiden</a>
+    </main>
+</body>
+</html>

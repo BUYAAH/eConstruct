@@ -2,20 +2,13 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
-from .forms import OrgAuthenticationForm
 
 app_name = "accounts"
 
 urlpatterns = [
-    path(
-        "login/",
-        auth_views.LoginView.as_view(
-            template_name="accounts/login.html",
-            authentication_form=OrgAuthenticationForm,
-            redirect_authenticated_user=True,
-        ),
-        name="login",
-    ),
+    # Ours, not Django's: a superuser lands in Mothership, a customer in the
+    # app. See accounts.views.LoginView.
+    path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("invite/<str:token>/", views.accept_invitation, name="accept_invitation"),
 ]

@@ -26,7 +26,29 @@ class OrgAuthenticationForm(AuthenticationForm):
         **AuthenticationForm.error_messages,
         "invalid_login": "Forkert e-mail eller adgangskode.",
         "inactive": "Din konto er deaktiveret. Kontakt din administrator.",
+        "suspended": "Din organisations adgang er sat på pause. Kontakt din leverandør.",
     }
+
+    def confirm_login_allowed(self, user):
+        """Refuse a user whose organization has been suspended from Mothership.
+
+        The deliberate wording difference from "inactive": a deactivated user
+        is their own admin's doing and their admin can undo it; a suspended
+        organization is ours, and their admin cannot.
+
+        This is the front door only. An already-open session is ended by
+        accounts.middleware.SuspendedOrganizationMiddleware — sessions last 30
+        days, so this check alone would not stop anyone already logged in.
+        """
+        super().confirm_login_allowed(user)
+        if (
+            not user.is_superuser
+            and user.organization_id is not None
+            and not user.organization.is_active
+        ):
+            raise forms.ValidationError(
+                self.error_messages["suspended"], code="suspended"
+            )
 
 
 class InvitationForm(forms.ModelForm):

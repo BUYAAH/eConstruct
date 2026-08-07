@@ -16,20 +16,13 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.text import slugify
 
-from core.models import Contractor, Discipline, Drawing, Organization, Project, Registration
+from core.defaults import seed_disciplines
+from core.models import Contractor, Drawing, Organization, Project, Registration
 
 User = get_user_model()
 
 SLUG = "demo"
 PASSWORD = "demo1234"
-
-DISCIPLINES = [
-    ("Konstruktion", "#dc3545", 1),
-    ("Brand", "#fd7e14", 2),
-    ("El", "#0d6efd", 3),
-    ("VVS", "#0dcaf0", 4),
-    ("Kvalitet", "#198754", 5),
-]
 
 CONTRACTORS = [
     ("Nord El A/S", "Søren Dahl", "sd@nordel.dk"),
@@ -82,11 +75,10 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"{'Created' if created else 'Found'} organization: {org.name}")
 
-        disciplines = {}
-        for name, color, order in DISCIPLINES:
-            disciplines[name], _ = Discipline.objects.get_or_create(
-                organization=org, name=name, defaults={"color": color, "sort_order": order}
-            )
+        # Same five a client created from Mothership gets — one list, in
+        # core/defaults.py.
+        seed_disciplines(org)
+        disciplines = {d.name: d for d in org.disciplines.all()}
 
         contractors = []
         for name, contact, email in CONTRACTORS:
@@ -126,7 +118,7 @@ class Command(BaseCommand):
                 with SAMPLE_PDF.open("rb") as fh:
                     drawing.file.save(SAMPLE_PDF.name, File(fh), save=True)
                 drawing.page_count = _page_count(drawing)
-                drawing.save(update_fields=["page_count"])
+                drawing.save(update_fields=["page_count", "updated_at"])
 
             today = timezone.localdate()
             for subject, discipline_name, status_value, offset in REGISTRATIONS:

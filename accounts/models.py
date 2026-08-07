@@ -5,6 +5,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+from core.base import BaseModel
+
 
 class User(AbstractUser):
     organization = models.ForeignKey(
@@ -22,7 +24,7 @@ def _make_token():
     return secrets.token_urlsafe(32)
 
 
-class Invitation(models.Model):
+class Invitation(BaseModel):
     """An emailed invite to join one organization.
 
     Users never self-register: an org admin invites an address, and the
@@ -46,7 +48,6 @@ class Invitation(models.Model):
     invited_by = models.ForeignKey(
         "accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     accepted_at = models.DateTimeField(null=True, blank=True)
 

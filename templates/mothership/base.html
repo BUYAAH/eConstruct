@@ -1,0 +1,85 @@
+{% load static %}
+<!doctype html>
+{% comment %}
+Mothership's own shell, not an extension of base.html.
+
+Deliberately different at a glance: a black top bar with a violet accent
+instead of the customer app's graphite side rail and navy. You will have both
+open at once, and the one where a wrong click affects a paying customer
+should never look like the one where it doesn't. It also has no side rail —
+there are three pages here, and a nav shaped like the customer app's would be
+the strongest possible way to confuse the two.
+
+Stylesheet is shared: micki.css carries the .ms-* block at the end, so the
+type, buttons and cards stay the same product.
+{% endcomment %}
+<html lang="da" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Mothership{% endblock %}</title>
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{% static 'vendor/fonts/plexsans/plexsans-latin-normal.woff2' %}">
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/micki.css' %}">
+</head>
+<body class="ms-body" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+{% include "partials/_icons.html" %}
+
+<header class="ms-topbar">
+    <div class="ms-shell d-flex align-items-center gap-3">
+        <a class="ms-brand" href="{% url 'mothership:clients' %}">
+            <span class="ms-brand-dot"></span>Mothership
+        </a>
+        <span class="ms-brand-sub d-none d-sm-inline">{{ brand }} internt</span>
+
+        {% comment %}
+        No link across to the customer app: a superuser has no organization,
+        so every page there is empty, and SuperuserHomeMiddleware sends them
+        straight back here anyway. This is where we live.
+        {% endcomment %}
+        <div class="ms-topbar-actions ms-auto d-flex align-items-center gap-2">
+            <div class="dropdown">
+                <button class="btn p-0 border-0 ms-avatar" data-bs-toggle="dropdown"
+                        aria-label="Kontomenu">
+                    {% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li class="dropdown-item-text">
+                        <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
+                        <div class="small text-body-secondary">{{ user.email|default:user.username }}</div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'admin:index' %}">Django admin</a></li>
+                    <li>
+                        <form method="post" action="{% url 'accounts:logout' %}">
+                            {% csrf_token %}
+                            <button class="dropdown-item">Log ud</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="ms-shell py-3 py-md-4">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Luk"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

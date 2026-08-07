@@ -7,7 +7,7 @@ scrolls inside its card on narrow screens rather than pushing the page
 sideways.
 {% endcomment %}
 <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0 reg-table">
+    <table class="table table-hover align-middle mb-0 data-table">
         <thead>
             <tr>
                 <th scope="col">Nr.</th>
@@ -22,15 +22,21 @@ sideways.
         <tbody>
             {% for r in registrations %}
             {% comment %}
-            The subject cell holds the link. data-page lets the viewer's
-            script jump to the right page instead of navigating — same markup,
-            two behaviours, decided by which page it's rendered on.
+            The subject cell holds the link — that's the keyboard path, and
+            the row's data-row-href just widens the click target (rows.js).
+
+            Inside the viewer the row means something else: row_jump swaps the
+            href for data-page, so viewer.js scrolls to the pin's page instead
+            of navigating away from the drawing.
             {% endcomment %}
-            <tr class="reg-row" {% if r.page_number %}data-page="{{ r.page_number }}"{% endif %}>
+            {# data-discipline lets the viewer's chips filter this list with the #}
+            {# same click that filters the pins. Inert on every other page. #}
+            <tr class="reg-row" data-discipline="{{ r.discipline_id }}"
+                {% if row_jump %}data-page="{{ r.page_number }}"
+                {% else %}data-row-href="{% url 'core:registration_detail' r.pk %}"{% endif %}>
                 <td class="text-nowrap small text-body-secondary">{{ r.label }}</td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="reg-dot" style="--dot: {{ r.discipline.color }};"></span>
                         <a class="text-decoration-none text-body"
                            href="{% url 'core:registration_detail' r.pk %}">{{ r.subject }}</a>
                         {% if r.photos.all %}
@@ -47,7 +53,20 @@ sideways.
                 {% if show_project %}
                 <td class="text-nowrap small">{{ r.project.name }}</td>
                 {% endif %}
-                <td class="text-nowrap">{{ r.discipline.name }}</td>
+                {% comment %}
+                The colour sits with the faggruppe rather than beside the
+                subject: on its own it was a legend you had to know by heart,
+                and next to the name it explains itself.
+                {% endcomment %}
+                <td>
+                    {# --dot goes on the pill, not the swatch: it inherits down #}
+                    {# to .reg-dot and lets the pill tint itself from the same #}
+                    {# value. Custom properties only inherit downward. #}
+                    <span class="reg-trade" style="--dot: {{ r.discipline.color }};">
+                        <span class="reg-dot"></span>
+                        {{ r.discipline.name }}
+                    </span>
+                </td>
                 <td class="text-nowrap">
                     {{ r.assigned_contractor.name }}
                     {% if r.responsible %}

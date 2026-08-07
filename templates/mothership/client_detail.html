@@ -1,0 +1,217 @@
+{% extends "mothership/base.html" %}
+
+{% block title %}{{ client.name }} — Mothership{% endblock %}
+
+{% block content %}
+<nav aria-label="brødkrumme" class="mb-2">
+    <a class="small" href="{% url 'mothership:clients' %}">&larr; Kunder</a>
+</nav>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0 me-auto">
+        {{ client.name }}
+        {% if not client.is_active %}
+        <span class="badge text-bg-secondary align-middle">Suspenderet</span>
+        {% endif %}
+    </h1>
+
+    <form method="post" action="{% url 'mothership:client_toggle' client.slug %}">
+        {% csrf_token %}
+        {% if client.is_active %}
+        <button class="btn btn-sm btn-outline-danger"
+                onclick="return confirm('Suspendér {{ client.name|escapejs }}? Alle deres brugere logges ud og kan ikke logge ind igen.')">
+            Suspendér
+        </button>
+        {% else %}
+        <button class="btn btn-sm btn-outline-success">Aktivér igen</button>
+        {% endif %}
+    </form>
+</div>
+
+<div class="row g-2 g-md-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ client.user_count }}</div>
+            <div class="ms-tile-label">Brugere</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ client.project_count }}</div>
+            <div class="ms-tile-label">Projekter</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ client.registration_count }}</div>
+            <div class="ms-tile-label">Registreringer</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ overdue_count }}</div>
+            <div class="ms-tile-label">Overskredet</div>
+        </div>
+    </div>
+</div>
+
+{% comment %}
+The setup warnings. A brand-new client is not usable until it has at least
+one discipline and one contractor, and this is the only place we would notice
+before they call (ROADMAP.md §7, friction 4).
+{% endcomment %}
+{% if not discipline_count or not contractor_count or not client.user_count %}
+<div class="alert alert-warning">
+    <div class="fw-semibold mb-1">Kunden er ikke klar til brug endnu</div>
+    <ul class="mb-0 ps-3 small">
+        {% if not client.user_count %}
+        <li>Ingen brugere. Ingen kan logge ind — send en invitation.</li>
+        {% endif %}
+        {% if not discipline_count %}
+        <li>Ingen faggrupper. En registrering kræver en faggruppe.</li>
+        {% endif %}
+        {% if not contractor_count %}
+        <li>
+            Ingen firmaer. En registrering kræver et firma, der er tilknyttet projektet —
+            kunden opretter dem selv under Indstillinger.
+        </li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header">Projekter</div>
+            <div class="table-responsive">
+                <table class="table mb-0 ms-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Navn</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-end">Tegninger</th>
+                            <th scope="col" class="text-end">Registreringer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project in projects %}
+                        <tr>
+                            <td>{{ project.name }}</td>
+                            <td>
+                                <span class="badge text-bg-{{ project.status_class }}">
+                                    {{ project.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="text-end">{{ project.drawing_count }}</td>
+                            <td class="text-end">{{ project.registration_count }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-body-secondary py-3">
+                                Ingen projekter endnu.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer small text-body-secondary">
+                Kun navne og tal. Registreringer, tegninger og fotos er kundens egne og
+                kan ikke ses herfra.
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Brugere</div>
+            <ul class="list-group list-group-flush">
+                {% for u in users %}
+                <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                    <span class="{% if not u.is_active %}text-body-secondary text-decoration-line-through{% endif %}">
+                        {{ u.get_full_name|default:u.username }}
+                    </span>
+                    <span class="small text-body-secondary">{{ u.username }}</span>
+                    {% if u.is_org_admin %}
+                    <span class="badge text-bg-primary">Admin</span>
+                    {% endif %}
+                    <span class="ms-auto small text-body-secondary">
+                        {% if u.last_login %}Sidst set {{ u.last_login|date:"j. M Y" }}{% else %}Aldrig logget ind{% endif %}
+                    </span>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-body-secondary">Ingen brugere endnu.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header">Åbne invitationer</div>
+            <ul class="list-group list-group-flush">
+                {% for invitation, link in invitations %}
+                <li class="list-group-item">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span>{{ invitation.email }}</span>
+                        {% if invitation.as_org_admin %}
+                        <span class="badge text-bg-primary">Admin</span>
+                        {% endif %}
+                        <span class="ms-auto small text-body-secondary">
+                            {% if invitation.is_expired %}Udløbet{% else %}Udløber {{ invitation.expires_at|date:"j. M Y" }}{% endif %}
+                        </span>
+                    </div>
+                    {% comment %}
+                    Shown so a client whose mail bounced can be helped by hand.
+                    The token is the only credential on this link, which is why
+                    it lives behind is_superuser and nowhere else.
+                    {% endcomment %}
+                    <div class="ms-invite-link mt-1">{{ link }}</div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-body-secondary">Ingen åbne invitationer.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Stamdata</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'mothership:client_edit' client.slug %}"
+                      class="d-flex gap-2 align-items-start mb-3">
+                    {% csrf_token %}
+                    <div class="flex-grow-1">
+                        <label class="form-label small" for="{{ form.name.id_for_label }}">
+                            {{ form.name.label }}
+                        </label>
+                        {{ form.name }}
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary mt-4">Gem</button>
+                </form>
+
+                <dl class="row mb-0 small">
+                    <dt class="col-5 fw-normal text-body-secondary">Slug</dt>
+                    <dd class="col-7"><code>{{ client.slug }}</code></dd>
+
+                    <dt class="col-5 fw-normal text-body-secondary">Oprettet</dt>
+                    <dd class="col-7">{{ client.created_at|date:"j. F Y" }}</dd>
+
+                    <dt class="col-5 fw-normal text-body-secondary">Seneste aktivitet</dt>
+                    <dd class="col-7">{{ client.last_activity|date:"j. F Y"|default:"—" }}</dd>
+
+                    <dt class="col-5 fw-normal text-body-secondary">Faggrupper</dt>
+                    <dd class="col-7">{{ discipline_count }}</dd>
+
+                    <dt class="col-5 fw-normal text-body-secondary">Firmaer</dt>
+                    <dd class="col-7">{{ contractor_count }}</dd>
+
+                    <dt class="col-5 fw-normal text-body-secondary">Tegninger</dt>
+                    <dd class="col-7">{{ drawing_count }}</dd>
+
+                    <dt class="col-5 fw-normal text-body-secondary">Åbne registreringer</dt>
+                    <dd class="col-7">{{ open_count }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

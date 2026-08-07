@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -41,6 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'accounts',
+    # The internal console for running the SaaS: creating and managing client
+    # organizations. Superuser-only, outside the tenancy boundary, and
+    # deliberately its own app so nothing customer-facing can import it.
+    'mothership',
 ]
 
 MIDDLEWARE = [
@@ -51,6 +56,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Both after auth and messages: they read request.user, and the first
+    # adds a message.
+    'accounts.middleware.SuspendedOrganizationMiddleware',
+    'accounts.middleware.SuperuserHomeMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -88,6 +97,13 @@ DATABASES = {
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
+
+# Every test fixture creates users, and the default PBKDF2 hasher is
+# deliberately slow — it dominated the suite's runtime (~2 min). Tests don't
+# exercise hashing itself, so they get a fast one. Never reached outside a
+# test run.
+if "test" in sys.argv:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -149,8 +165,78 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 # Field workers are on phones on a scaffold — re-authenticating mid-shift is
 # the kind of friction that gets an app abandoned. Sessions last 30 days and
 # slide forward on every request.
+#
+# Note what the second line costs: a session row is written on *every* request,
+# so every page view is a database write. Harmless on one machine; it is the
+# first thing that will contend on SQLite once several people are on site at
+# once, and the strongest practical argument for moving to Postgres.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
 SESSION_SAVE_EVERY_REQUEST = True
+
+
+# --- Transport security ------------------------------------------------------
+#
+# Only when DEBUG is off, so local development over plain http is unaffected.
+# A deployed instance is always behind TLS, so there is no case where these
+# should be tuned per host.
+
+if not DEBUG:
+    # A session cookie is valid for 30 days (above). Marking it Secure is what
+    # stops one stray http:// request from handing that to anyone on the
+    # network — the long session is exactly what makes this worth doing.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # PythonAnywhere terminates TLS at its proxy and forwards over http, so
+    # Django cannot tell a secure request from an insecure one on its own.
+    # Without this line SECURE_SSL_REDIRECT sees "http", redirects to https,
+    # is proxied back as http, and loops until the browser gives up.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+
+    # HSTS is deliberately NOT enabled. It tells a browser never to use http
+    # for this domain again, is cached for its full duration, and cannot be
+    # withdrawn by changing the server — the wrong trade on a test domain that
+    # may be reused or thrown away. Turn it on when there is a real one.
+    # SECURE_HSTS_SECONDS = 31536000
+
+
+# --- Logging -----------------------------------------------------------------
+#
+# With DEBUG off, an unhandled exception renders a 500 page and is otherwise
+# silent: there is no mail backend wired to ADMINS, so without this the only
+# record is whatever the host happens to do with stderr. Logging explicitly
+# means the traceback lands somewhere predictable on any host.
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        # The logger Django raises unhandled view exceptions on. propagate
+        # False so the traceback is not printed a second time by root.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
 
 # Invitations are emailed. Console backend prints them to the terminal in
 # development; set EMAIL_HOST etc. in .env for a real server.
@@ -164,5 +250,9 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@localhost")
 
-# Absolute base for links inside invitation emails (no request context there).
+# Absolute base for invitation links — there is no request to derive it from,
+# neither in the email nor on the Mothership client page that shows the link
+# for copying. Left as localhost it silently produces invitations that only
+# work on the developer's own machine, so core.checks turns that into a
+# startup error whenever DEBUG is off rather than a puzzled client.
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")

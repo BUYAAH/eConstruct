@@ -82,7 +82,11 @@ function setAddMode(on) {
     addMode = on;
     addBtn.classList.toggle("btn-warning", on);
     addBtn.classList.toggle("btn-primary", !on);
-    addBtn.textContent = on ? "Annullér" : "+ Registrering";
+    // Swap which label is shown rather than writing text. Both live in the
+    // template — the UI is Danish and hardcoded there — and setting
+    // .textContent here would destroy the button's responsive markup.
+    addBtn.querySelector('[data-add-label="idle"]').classList.toggle("d-none", on);
+    addBtn.querySelector('[data-add-label="active"]').classList.toggle("d-none", !on);
     addHint.classList.toggle("d-none", !on);
     pinLayer.classList.toggle("add-mode", on);
 }
@@ -116,6 +120,19 @@ document.body.addEventListener("micki:close-sheet", () => {
 
 // --- Discipline filter chips -------------------------------------------------------
 
+const notesList = document.getElementById("notes-list");
+const notesFilteredEmpty = document.getElementById("notes-filtered-empty");
+
+/* One chip drives both views of the same data.
+ *
+ * The chips used to hide pins only, which left the list below the drawing
+ * showing rows for trades you had just switched off — the page disagreed with
+ * itself about what you were looking at.
+ *
+ * Filtering is client-side rather than a round trip: both sets are already in
+ * the DOM, the drawing must not re-render to change which pins show, and on a
+ * site tablet over mobile data a request per chip tap would be felt.
+ */
 function applyDisciplineFilter() {
     const hidden = new Set(
         [...document.querySelectorAll(".discipline-chip:not(.active)")].map((c) => c.dataset.discipline)
@@ -123,6 +140,19 @@ function applyDisciplineFilter() {
     pinLayer.querySelectorAll(".pin").forEach((pin) => {
         pin.classList.toggle("pin-hidden", hidden.has(pin.dataset.discipline));
     });
+
+    const rows = notesList.querySelectorAll(".reg-row");
+    let visible = 0;
+    rows.forEach((row) => {
+        const off = hidden.has(row.dataset.discipline);
+        row.classList.toggle("d-none", off);
+        if (!off) visible += 1;
+    });
+
+    // Only when rows exist but every one is filtered out. An empty drawing
+    // already has its own message from the table's {% empty %} branch, and
+    // two "nothing here" notices stacked would be worse than none.
+    notesFilteredEmpty.classList.toggle("d-none", visible > 0 || rows.length === 0);
 }
 
 document.querySelectorAll(".discipline-chip").forEach((chip) => {
@@ -132,11 +162,14 @@ document.querySelectorAll(".discipline-chip").forEach((chip) => {
     });
 });
 
+// Both halves are swapped in by HTMX after this script runs, and again on
+// every save, so the filter has to be reapplied to whatever arrives.
 pinLayer.addEventListener("htmx:afterSwap", applyDisciplineFilter);
+notesList.addEventListener("htmx:afterSwap", applyDisciplineFilter);
 
 // --- List below the viewer: tapping a row jumps to its page ------------------
 
-document.getElementById("notes-list").addEventListener("click", (e) => {
+notesList.addEventListener("click", (e) => {
     const row = e.target.closest(".reg-row");
     if (row && row.dataset.page) goTo(parseInt(row.dataset.page, 10));
 });

@@ -2,8 +2,10 @@ from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 
+from .base import BaseModel
 
-class Organization(models.Model):
+
+class Organization(BaseModel):
     """A customer tenant. Everything else here hangs off exactly one.
 
     This is the isolation boundary: organizations are 100% separated from
@@ -18,13 +20,12 @@ class Organization(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
 
 
-class Discipline(models.Model):
+class Discipline(BaseModel):
     """A trade group (faggruppe) — Konstruktion, Brand, El, VVS, Kvalitet.
 
     Defined per organization; the colour tints the pin on the drawing and
@@ -50,7 +51,7 @@ class Discipline(models.Model):
         return self.name
 
 
-class Contractor(models.Model):
+class Contractor(BaseModel):
     """A subcontractor firm — the "Firmaer" on a project card.
 
     Owned by the organization and has no login (ROADMAP.md D7). Work is
@@ -66,7 +67,6 @@ class Contractor(models.Model):
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=40, blank=True)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["name"]
@@ -80,9 +80,36 @@ class Contractor(models.Model):
         return self.name
 
 
-class Project(models.Model):
+class ProjectQuerySet(models.QuerySet):
+    def with_stats(self):
+        """The counts every project card shows, in one query.
+
+        distinct=True on each: contractors is a M2M and registrations a
+        reverse FK, so joining both multiplies rows and the counts would be
+        each other's multiple without it.
+        """
+        return self.annotate(
+            drawing_count=models.Count("drawings", distinct=True),
+            contractor_count=models.Count("contractors", distinct=True),
+            registration_count=models.Count("registrations", distinct=True),
+            open_count=models.Count(
+                "registrations",
+                filter=models.Q(registrations__status=Registration.OPEN),
+                distinct=True,
+            ),
+            approved_count=models.Count(
+                "registrations",
+                filter=models.Q(registrations__status=Registration.APPROVED),
+                distinct=True,
+            ),
+        )
+
+
+class Project(BaseModel):
     """A building site. The spine of the app — drawings and registrations
     both hang off a project, and access is granted per project (D9)."""
+
+    objects = ProjectQuerySet.as_manager()
 
     PLANNED = "planned"
     ACTIVE = "active"
@@ -114,9 +141,6 @@ class Project(models.Model):
     )
     contractors = models.ManyToManyField(Contractor, blank=True, related_name="projects")
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         ordering = ["-updated_at"]
         constraints = [
@@ -142,11 +166,18 @@ class Project(models.Model):
         a manually-set percentage is the first thing to go stale on a
         project board. A project with no registrations reads 0, not 100:
         nothing has been verified yet.
+
+        Uses the annotations from with_stats() when they're there; falls back
+        to two queries otherwise. Without that, a page of cards would issue
+        two extra queries per card.
         """
-        total = self.registrations.count()
+        total = getattr(self, "registration_count", None)
+        approved = getattr(self, "approved_count", None)
+        if total is None or approved is None:
+            total = self.registrations.count()
+            approved = self.registrations.filter(status=Registration.APPROVED).count()
         if not total:
             return 0
-        approved = self.registrations.filter(status=Registration.APPROVED).count()
         return round(approved / total * 100)
 
     def visible_to(self, user):
@@ -158,7 +189,7 @@ class Project(models.Model):
         )
 
 
-class Drawing(models.Model):
+class Drawing(BaseModel):
     """An uploaded PDF drawing that registrations get pinned to.
 
     We own the bytes, so this is a plain FileField: local disk today, S3
@@ -173,7 +204,6 @@ class Drawing(models.Model):
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["name"]
@@ -186,7 +216,7 @@ class Drawing(models.Model):
         return self.project.organization_id
 
 
-class Registration(models.Model):
+class Registration(BaseModel):
     """A defect or observation on site — the actual domain object.
 
     Usually created by tapping a point on a drawing, which is where the
@@ -242,9 +272,6 @@ class Registration(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=OPEN)
     resolved_at = models.DateTimeField(null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -315,7 +342,7 @@ class Registration(models.Model):
         self.save(update_fields=["status", "resolved_at", "approved_at", "updated_at"])
 
 
-class RegistrationPhoto(models.Model):
+class RegistrationPhoto(BaseModel):
     """A site photo on a registration. Several per registration.
 
     Both renditions are generated at upload (core/images.py): the full image
@@ -331,7 +358,6 @@ class RegistrationPhoto(models.Model):
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["created_at"]

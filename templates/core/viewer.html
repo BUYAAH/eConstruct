@@ -23,23 +23,77 @@
      data-drawing-id="{{ drawing.pk }}"
      data-note-form-url="{% url 'core:registration_new' project.slug %}">
 
+    {% comment %}
+    Toolbar. Two fixed rows, never more: page navigation and the primary
+    action on top, the faggruppe filter beneath it.
+
+    What lives where follows one rule — a control sits next to what it
+    changes. Page nav and the chips both act on the drawing below, so they
+    stay against it; the exports and Slet tegning change nothing on screen,
+    so they collapse into one ⋯ menu and stop taking up a row of their own.
+    That merge is what shrank this from four wrapped rows to two.
+    {% endcomment %}
     <div class="card mb-3">
         <div class="card-body py-2 px-2">
-            <div class="d-flex flex-wrap justify-content-center align-items-center gap-2">
-                <button id="prev-page" class="btn btn-sm btn-outline-secondary px-3" disabled>&larr;</button>
-                <span class="small text-nowrap">
-                    <input id="page-input" type="number" min="1" value="1"
-                           class="form-control form-control-sm d-inline-block text-center" style="width: 4.5rem;">
-                    / <span id="page-count">…</span>
-                </span>
-                <button id="next-page" class="btn btn-sm btn-outline-secondary px-3" disabled>&rarr;</button>
-                <span class="vr d-none d-sm-inline"></span>
-                <button id="add-note-btn" class="btn btn-sm btn-primary px-3">+ Registrering</button>
-                <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-success dropdown-toggle px-3" data-bs-toggle="dropdown">
-                        Hent PDF
+            <div class="viewer-toolbar d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 toolbar-nav">
+                    <button id="prev-page" class="btn btn-sm btn-outline-secondary px-3" disabled>&larr;</button>
+                    <span class="small text-nowrap">
+                        <input id="page-input" type="number" min="1" value="1"
+                               class="form-control form-control-sm d-inline-block text-center page-input">
+                        / <span id="page-count">…</span>
+                    </span>
+                    <button id="next-page" class="btn btn-sm btn-outline-secondary px-3" disabled>&rarr;</button>
+                </div>
+
+                {% comment %}
+                One line however many faggrupper a client defines — the row
+                scrolls sideways rather than wrapping, so the drawing never
+                moves further down the page because someone added a twelfth
+                trade. It shares the toolbar line from md up and takes its own
+                line below that, where there is no room to share.
+
+                Deliberately still up here rather than down by the table: it
+                filters the pins on the drawing, and a control belongs next to
+                the thing it changes. It filters the list too — see viewer.js.
+                {% endcomment %}
+                {% if disciplines %}
+                <div class="chip-row d-flex align-items-center gap-2">
+                    {% for discipline in disciplines %}
+                    <button class="btn btn-sm rounded-pill discipline-chip active"
+                            style="--chip: {{ discipline.color }};"
+                            data-discipline="{{ discipline.pk }}">{{ discipline.name }}</button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex align-items-center gap-2 toolbar-actions">
+                {% comment %}
+                Both labels live here rather than in JS: the UI is Danish and
+                hardcoded in templates, and setting .textContent from script
+                would destroy the responsive markup inside the button.
+                {% endcomment %}
+                <button id="add-note-btn" class="btn btn-sm btn-primary px-3">
+                    {# The sign alone below 576px: at that width the noun is #}
+                    {# what pushes the row into wrapping, and + carries it. #}
+                    <span data-add-label="idle">+<span class="d-none d-sm-inline"> Registrering</span></span>
+                    <span data-add-label="active" class="d-none">Annullér</span>
+                </button>
+
+                {% comment %}
+                One menu for everything that doesn't touch the view. Slet
+                tegning is separated by a divider and coloured — a destructive
+                action may share a menu with downloads, but it must not be
+                mistaken for one. Deleting returns to the project, since this
+                page is about to stop existing.
+                {% endcomment %}
+                <div class="dropdown">
+                    <button class="btn btn-kebab" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" aria-label="Tegningshandlinger">
+                        <svg class="app-icon"><use href="#i-more"></use></svg>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><h3 class="dropdown-header">Hent PDF</h3></li>
                         <li><a class="dropdown-item" href="{% url 'core:export_drawing' drawing.pk 'summary' %}">
                             Nummererede nåle + oversigtsside
                             <div class="small text-body-secondary">Send denne til firmaet</div>
@@ -48,16 +102,23 @@
                             Tekst tegnet på siden
                             <div class="small text-body-secondary">Bedst til få, korte registreringer</div>
                         </a></li>
+                        {% if user.is_org_admin %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{% url 'core:drawing_delete' drawing.pk %}">
+                                {% csrf_token %}
+                                <button class="dropdown-item text-danger"
+                                        onclick="return confirm('Slet tegningen “{{ drawing.name|escapejs }}”? Registreringer på den bevares, men mister deres placering.')">
+                                    Slet tegning
+                                </button>
+                            </form>
+                        </li>
+                        {% endif %}
                     </ul>
                 </div>
+                </div>
             </div>
-            <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mt-2">
-                {% for discipline in disciplines %}
-                <button class="btn btn-sm rounded-pill discipline-chip active"
-                        style="--chip: {{ discipline.color }};"
-                        data-discipline="{{ discipline.pk }}">{{ discipline.name }}</button>
-                {% endfor %}
-            </div>
+
             <p id="add-note-hint" class="text-center small text-primary d-none mb-0 mt-2">
                 Tryk på tegningen dér, hvor registreringen hører til.
             </p>
@@ -84,6 +145,15 @@
              hx-get="{% url 'core:drawing_registrations' drawing.pk %}"
              hx-trigger="load, micki:refresh-pins from:body"
              hx-swap="innerHTML"></div>
+        {% comment %}
+        Shown by viewer.js when the chips hide every row. Without it the card
+        would just go blank, which reads as "nothing here" rather than "you
+        filtered it all away" — the difference matters, because the fix is a
+        chip at the top of the page and nothing on screen would say so.
+        {% endcomment %}
+        <p id="notes-filtered-empty" class="text-center text-body-secondary small py-4 mb-0 d-none">
+            Ingen registreringer i de valgte faggrupper.
+        </p>
     </div>
 </div>
 

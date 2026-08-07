@@ -1,5 +1,13 @@
-Django>=6.0,<6.1
-python-dotenv   # local .env loading
-pypdf           # page counts + note stamping
-reportlab       # drawing the note overlays
-Pillow          # photo downscale / EXIF handling
+# Pinned exactly, not ranged. An unpinned install resolves to whatever is
+# newest on the day the server is built, which is not what was tested here —
+# and reportlab in particular draws the PDF stamps, so a version bump breaks
+# exports on the server while everything still works locally.
+#
+# To upgrade: change a version here, reinstall, run the tests, commit.
+# Versions below are what this app was developed and tested against.
+
+Django==6.0.6
+python-dotenv==1.2.2    # local .env loading
+pypdf==6.14.2           # page counts + note stamping
+reportlab==5.0.0        # drawing the note overlays
+pillow==12.3.0          # photo downscale / EXIF handling

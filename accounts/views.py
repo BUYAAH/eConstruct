@@ -1,14 +1,39 @@
 from django.contrib.auth import get_user_model, login as auth_login
+from django.contrib.auth import views as auth_views
 from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import resolve_url
 from django.utils import timezone
 
-from .forms import AcceptInvitationForm
+from .forms import AcceptInvitationForm, OrgAuthenticationForm
 from .models import Invitation
 
 User = get_user_model()
 
-# Login/logout are Django's own class-based views, wired in urls.py — only
-# the invite-acceptance flow needs custom handling.
+
+class LoginView(auth_views.LoginView):
+    """Django's login, sending each kind of account to its own home.
+
+    An account is either ours or a customer's — there is no third kind and
+    nobody holds both roles. A superuser has no organization, so the customer
+    app has literally nothing to show them; landing there and then hunting for
+    a way across is friction with no upside.
+
+    Only the *default* destination changes. An explicit `?next=` still wins,
+    which is what makes a bookmarked deep link work after a session expires.
+    """
+
+    template_name = "accounts/login.html"
+    authentication_form = OrgAuthenticationForm
+    redirect_authenticated_user = True
+
+    def get_default_redirect_url(self):
+        if self.request.user.is_superuser:
+            return resolve_url("mothership:clients")
+        return super().get_default_redirect_url()
+
+
+# Logout is Django's own view, wired in urls.py — only login and the
+# invite-acceptance flow need custom handling.
 
 
 def accept_invitation(request, token):
@@ -35,7 +60,9 @@ def accept_invitation(request, token):
                 is_org_admin=invitation.as_org_admin,
             )
             invitation.accepted_at = timezone.now()
-            invitation.save(update_fields=["accepted_at"])
+            # updated_at must be listed explicitly: auto_now is skipped for
+            # fields absent from update_fields, silently.
+            invitation.save(update_fields=["accepted_at", "updated_at"])
             auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             return redirect("core:overview")
     else:

@@ -1,0 +1,101 @@
+{% extends "mothership/base.html" %}
+
+{% block title %}Kunder — Mothership{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0 me-auto">Kunder</h1>
+    <a class="btn btn-primary btn-sm" href="{% url 'mothership:client_create' %}">Ny kunde</a>
+</div>
+
+{% comment %}
+Totals are over every client, deliberately — they don't respond to the search
+box, so a number never changes meaning as you type.
+{% endcomment %}
+<div class="row g-2 g-md-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ total_active }}</div>
+            <div class="ms-tile-label">Aktive kunder</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ total_users }}</div>
+            <div class="ms-tile-label">Brugere</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ total_projects }}</div>
+            <div class="ms-tile-label">Projekter</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="ms-tile">
+            <div class="ms-tile-value">{{ total_registrations }}</div>
+            <div class="ms-tile-label">Registreringer</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <span class="me-auto">Alle kunder</span>
+        <form method="get" class="d-flex gap-2" role="search">
+            <input type="search" name="q" value="{{ query }}" class="form-control form-control-sm"
+                   style="max-width: 15rem;" placeholder="Søg efter firmanavn" aria-label="Søg">
+            <button class="btn btn-sm btn-outline-secondary">Søg</button>
+        </form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 ms-table">
+            <thead>
+                <tr>
+                    <th scope="col">Firma</th>
+                    <th scope="col" class="text-end">Brugere</th>
+                    <th scope="col" class="text-end">Projekter</th>
+                    <th scope="col" class="text-end">Registreringer</th>
+                    <th scope="col">Seneste aktivitet</th>
+                    <th scope="col">Oprettet</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr class="{% if not client.is_active %}ms-row-suspended{% endif %}">
+                    <td>
+                        <a class="ms-client-name"
+                           href="{% url 'mothership:client_detail' client.slug %}">{{ client.name }}</a>
+                        {% if not client.is_active %}
+                        <span class="badge text-bg-secondary ms-1">Suspenderet</span>
+                        {% endif %}
+                        {% if not client.user_count %}
+                        <span class="badge text-bg-warning ms-1">Ingen brugere</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">{{ client.user_count }}</td>
+                    <td class="text-end">{{ client.project_count }}</td>
+                    <td class="text-end">{{ client.registration_count }}</td>
+                    <td class="small text-body-secondary">
+                        {{ client.last_activity|date:"j. M Y"|default:"—" }}
+                    </td>
+                    <td class="small text-body-secondary">{{ client.created_at|date:"j. M Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-body-secondary py-4">
+                        {% if query %}
+                        Ingen kunder matcher "{{ query }}".
+                        {% else %}
+                        Ingen kunder endnu.
+                        <a href="{% url 'mothership:client_create' %}">Opret den første</a>.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -19,90 +19,189 @@ kills the negative margins that would otherwise overflow horizontally.
 {% block container_class %}container-fluid px-2 px-md-3 py-3 py-md-4{% endblock %}
 
 {% block content %}
+{% comment %}
+One row throughout: the three info cards are col-md-4, the two working cards
+below are col-12. Keeping them in the same row means every card lines up on
+the same gutters instead of the sections sitting flush while the header cards
+are inset.
+{% endcomment %}
 <div class="row g-3 mx-0 project-grid">
 
-    <div class="col-12 col-lg-3">
-        <div class="card">
+    {# --- Identity ---------------------------------------------------- #}
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
             <div class="card-header d-flex align-items-center gap-2">
                 <span class="flex-grow-1 text-truncate">{{ project.name }}</span>
                 <span class="badge text-bg-{{ project.status_class }} flex-shrink-0">
                     {{ project.get_status_display }}
                 </span>
+                {% if user.is_org_admin %}
+                {% comment %}
+                A dropdown rather than a link straight to the edit page: a
+                kebab that navigates on click breaks the affordance it
+                promises, and project-level actions (arkivér, slet) will land
+                here next.
+                {% endcomment %}
+                <div class="dropdown flex-shrink-0">
+                    <button class="btn btn-kebab" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" aria-label="Projekthandlinger">
+                        <svg class="app-icon"><use href="#i-more"></use></svg>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'core:project_edit' project.slug %}">
+                                Redigér projekt
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
             </div>
-
-            <div class="p-3 border-bottom">
-                <a class="btn btn-primary btn-sm w-100"
-                   href="{% url 'core:registration_new' project.slug %}">+ Ny registrering</a>
+            <div class="card-body">
+                <dl class="project-meta">
+                    <dt>Sagsnr.</dt>
+                    <dd>{{ project.case_no|default:"—" }}</dd>
+                    <dt>Adresse</dt>
+                    <dd>{{ project.address|default:"—" }}</dd>
+                    <dt>Projektleder</dt>
+                    <dd>{{ project.manager|default:"—" }}</dd>
+                </dl>
             </div>
-
-            <dl class="project-meta">
-                <dt>Sagsnr.</dt>
-                <dd>{{ project.case_no|default:"—" }}</dd>
-                <dt>Adresse</dt>
-                <dd>{{ project.address|default:"—" }}</dd>
-                <dt>Projektleder</dt>
-                <dd>{{ project.manager|default:"—" }}</dd>
-                <dt>Firmaer</dt>
-                <dd>
-                    {% for contractor in project.contractors.all %}
-                    <div>{{ contractor.name }}</div>
-                    {% empty %}—
-                    {% endfor %}
-                </dd>
-                <dt>Deltagere</dt>
-                <dd>{{ project.members.count }}</dd>
-                <dt>Sidst ændret</dt>
-                <dd>{{ project.updated_at|timesince }} siden</dd>
-            </dl>
-
-            {% if user.is_org_admin %}
-            <div class="card-footer">
-                <a class="btn btn-sm btn-outline-secondary w-100"
-                   href="{% url 'core:project_edit' project.slug %}">Redigér projekt</a>
-            </div>
-            {% endif %}
         </div>
     </div>
 
-    <div class="col-12 col-lg-9 d-flex flex-column gap-3">
+    {# --- Contractors --------------------------------------------------- #}
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="flex-grow-1">Firmaer</span>
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle flex-shrink-0">
+                    {{ project.contractors.count }}
+                </span>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% comment %}
+                One line per firm: name left, contact right — the same shape
+                as the label/value rows in the cards beside it. Both truncate,
+                and the contact yields first because the firm name is what
+                you're scanning for.
+                {% endcomment %}
+                {% for contractor in project.contractors.all %}
+                <li class="list-group-item contractor-row">
+                    <span class="text-truncate">{{ contractor.name }}</span>
+                    <span class="card-meta-muted text-truncate">
+                        {{ contractor.contact_email|default:contractor.contact_name }}
+                    </span>
+                </li>
+                {% empty %}
+                <li class="list-group-item card-meta-muted">
+                    Ingen firmaer tilknyttet.
+                    {% if user.is_org_admin %}
+                    Tilføj dem under <a href="{% url 'core:project_edit' project.slug %}">Redigér projekt</a>.
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {# --- Activity ------------------------------------------------------- #}
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
+            <div class="card-header">Seneste hændelser</div>
+            <ul class="list-group list-group-flush">
+                {% comment %}
+                PLACEHOLDER — these three rows are hardcoded, not data. There
+                is no activity model yet; when there is, this becomes a loop
+                over it and nothing else here has to change.
+
+                Nothing on screen marks these as fake, so don't demo this card
+                as if it were live.
+                {% endcomment %}
+                <li class="list-group-item activity-row">
+                    <svg class="app-icon flex-shrink-0 card-meta-muted"><use href="#i-drawings"></use></svg>
+                    <span class="flex-grow-1 min-width-0 text-truncate">
+                        Tilføjet tegning “3 - 1. etage”
+                    </span>
+                    <span class="card-meta-muted flex-shrink-0">2 t.</span>
+                </li>
+                <li class="list-group-item activity-row">
+                    <svg class="app-icon flex-shrink-0 card-meta-muted"><use href="#i-registrations"></use></svg>
+                    <span class="flex-grow-1 min-width-0 text-truncate">
+                        Ny registrering #012 — Revne i betonvæg
+                    </span>
+                    <span class="card-meta-muted flex-shrink-0">5 t.</span>
+                </li>
+                <li class="list-group-item activity-row">
+                    <svg class="app-icon flex-shrink-0 card-meta-muted"><use href="#i-check"></use></svg>
+                    <span class="flex-grow-1 min-width-0 text-truncate">
+                        Registrering #008 godkendt
+                    </span>
+                    <span class="card-meta-muted flex-shrink-0">i går</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    {# --- Drawings ------------------------------------------------------ #}
+    <div class="col-12">
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <svg class="app-icon flex-shrink-0"><use href="#i-drawings"></use></svg>
                 <span class="flex-grow-1">Tegninger</span>
                 {% if user.is_org_admin %}
-                <a class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                <a class="btn btn-sm btn-primary btn-card-action flex-shrink-0"
                    href="{% url 'core:drawing_upload' project.slug %}">+ Upload</a>
                 {% endif %}
             </div>
-            <ul class="list-group list-group-flush">
-                {% for drawing in drawings %}
-                <li class="list-group-item d-flex align-items-center gap-3">
-                    <div class="flex-grow-1 min-width-0">
-                        <a class="text-decoration-none" href="{% url 'core:viewer' drawing.pk %}">
-                            {{ drawing.name }}
-                        </a>
-                        <div class="small text-body-secondary">
-                            {{ drawing.page_count }} side{{ drawing.page_count|pluralize:"r" }} ·
-                            {{ drawing.registrations.count }} registrering{{ drawing.registrations.count|pluralize:"er" }}
-                        </div>
-                    </div>
-                    {% if user.is_org_admin %}
-                    <form method="post" action="{% url 'core:drawing_delete' drawing.pk %}"
-                          class="flex-shrink-0">
-                        {% csrf_token %}
-                        <button class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('Slet tegningen og dens nåle?')">Slet</button>
-                    </form>
-                    {% endif %}
-                </li>
-                {% empty %}
-                <li class="list-group-item text-body-secondary small py-4 text-center">
-                    Ingen tegninger endnu.
-                </li>
-                {% endfor %}
-            </ul>
+            {% comment %}
+            Same shape as the registrations table below: shared .data-table
+            styling, and table-responsive so it scrolls inside the card on
+            narrow screens rather than pushing the page sideways.
+            {% endcomment %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Navn</th>
+                            <th scope="col">Sider</th>
+                            <th scope="col">Registreringer</th>
+                            <th scope="col">Tilføjet af</th>
+                            <th scope="col">Dato</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for drawing in drawings %}
+                        <tr data-row-href="{% url 'core:viewer' drawing.pk %}">
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <svg class="app-icon flex-shrink-0 card-meta-muted">
+                                        <use href="#i-drawings"></use>
+                                    </svg>
+                                    <a class="text-decoration-none text-body"
+                                       href="{% url 'core:viewer' drawing.pk %}">{{ drawing.name }}</a>
+                                </div>
+                            </td>
+                            <td>{{ drawing.page_count }}</td>
+                            <td>{{ drawing.registration_count }}</td>
+                            <td class="text-nowrap">{{ drawing.uploaded_by|default:"—" }}</td>
+                            <td class="text-nowrap">{{ drawing.created_at|date:"SHORT_DATE_FORMAT" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-body-secondary py-4">
+                                Ingen tegninger endnu.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+    </div>
 
+    {# --- Registrations -------------------------------------------------- #}
+    <div class="col-12">
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <svg class="app-icon flex-shrink-0"><use href="#i-registrations"></use></svg>
@@ -114,7 +213,7 @@ kills the negative margins that would otherwise overflow horizontally.
                     </span>
                     {% endif %}
                 </span>
-                <a class="btn btn-sm btn-primary flex-shrink-0"
+                <a class="btn btn-sm btn-primary btn-card-action flex-shrink-0"
                    href="{% url 'core:registration_new' project.slug %}">+ Ny</a>
             </div>
             {% include "core/partials/registration_rows.html" %}
