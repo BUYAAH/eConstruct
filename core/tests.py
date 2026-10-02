@@ -72,11 +72,11 @@ def make_org(slug, name=None):
     discipline = Discipline.objects.create(organization=org, name="El", color="#0d6efd")
     contractor = Contractor.objects.create(organization=org, name=f"{slug} El A/S")
     admin = User.objects.create_user(
-        username=f"admin@{slug}.dk", password="pw-for-tests-123",
+        email=f"admin@{slug}.dk", password="pw-for-tests-123",
         organization=org, is_org_admin=True,
     )
     member = User.objects.create_user(
-        username=f"member@{slug}.dk", password="pw-for-tests-123", organization=org,
+        email=f"member@{slug}.dk", password="pw-for-tests-123", organization=org,
     )
     project = Project.objects.create(organization=org, name=f"{slug} projekt", slug=f"{slug}-projekt")
     project.members.set([admin, member])
@@ -268,7 +268,7 @@ class ProjectMembershipTests(MediaTestCase):
     def setUpTestData(cls):
         cls.a = make_org("alpha")
         cls.outsider = User.objects.create_user(
-            username="outsider@alpha.dk", password="pw-for-tests-123",
+            email="outsider@alpha.dk", password="pw-for-tests-123",
             organization=cls.a["org"],
         )
 
@@ -617,6 +617,40 @@ class PinPositionTests(MediaTestCase):
         self.assertNotIn("27,870", content)
 
 
+class ViewerListOrderTests(MediaTestCase):
+    """The list under the viewer is ordered by urgency, not by date: overdue
+    first, then åben, løst, godkendt, and by number within each."""
+
+    def setUp(self):
+        self.a = make_org("alpha")
+        self.client.force_login(self.a["admin"])
+        yesterday = timezone.localdate() - timedelta(days=1)
+
+        def make(subject, **fields):
+            return Registration.objects.create(
+                project=self.a["project"], drawing=self.a["drawing"], page_number=1,
+                x_pct=10, y_pct=10, discipline=self.a["discipline"], subject=subject,
+                assigned_contractor=self.a["contractor"], author=self.a["admin"], **fields,
+            )
+
+        # make_org's own registration is #001 and open.
+        make("godkendt", status=Registration.APPROVED)  # 002
+        make("overskredet", deadline=yesterday)  # 003
+        make("løst", status=Registration.RESOLVED)  # 004
+        self.late_resolved = make("løst men for sent", status=Registration.RESOLVED, deadline=yesterday)  # 005
+
+    def test_state_puts_overdue_before_the_stored_status(self):
+        self.assertEqual(self.late_resolved.state, "overdue")
+
+    def test_rows_are_ordered_by_urgency(self):
+        response = self.client.get(
+            reverse("core:drawing_registrations", args=[self.a["drawing"].pk])
+        )
+        content = response.content.decode()
+        positions = [content.index(f"#00{n}") for n in (3, 5, 1, 4, 2)]
+        self.assertEqual(positions, sorted(positions))
+
+
 class PhotoTests(MediaTestCase):
     # Per-test, not setUpTestData: these delete and add files, and the
     # filesystem does not roll back with the transaction.
@@ -670,7 +704,7 @@ class InvitationTests(MediaTestCase):
              "password1": "korrekt-hest-batteri", "password2": "korrekt-hest-batteri"},
         )
         self.assertEqual(response.status_code, 302)
-        user = User.objects.get(username="ny@alpha.dk")
+        user = User.objects.get(email="ny@alpha.dk")
         self.assertEqual(user.organization, self.a["org"])
         self.assertFalse(user.is_org_admin)
 
@@ -682,6 +716,28 @@ class InvitationTests(MediaTestCase):
         self.client.post(url, payload)
         self.client.logout()
         self.assertEqual(self.client.get(url).status_code, 410)
+
+    def test_an_address_already_in_use_elsewhere_cannot_accept(self):
+        """Invitation uniqueness is per organization, so two organizations can
+        each invite the same person. Whoever accepted second used to hit an
+        IntegrityError and a 500; now it is the same dead end as any other
+        unusable token, and says no more than they do."""
+        other = Organization.objects.create(name="Beta", slug="beta")
+        invitation = Invitation.objects.create(
+            organization=other, email=self.a["admin"].email
+        )
+        url = reverse("accounts:accept_invitation", args=[invitation.token])
+
+        self.assertEqual(self.client.get(url).status_code, 410)
+
+        before = User.objects.count()
+        response = self.client.post(
+            url,
+            {"first_name": "Ny", "last_name": "B",
+             "password1": "korrekt-hest-batteri", "password2": "korrekt-hest-batteri"},
+        )
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(User.objects.count(), before)
 
     def test_expired_token_is_refused(self):
         invitation = Invitation.objects.create(
@@ -725,3 +781,149 @@ class DisciplineTests(MediaTestCase):
         self.assertEqual(Discipline.objects.get(name="Brand").organization, self.a["org"])
         self.client.post(reverse("core:contractor_create"), {"name": "Ny Entreprise"})
         self.assertEqual(Contractor.objects.get(name="Ny Entreprise").organization, self.a["org"])
+
+
+class OverviewTests(MediaTestCase):
+    """The landing page's three action lists, the counts behind them, and
+    the overdue badge in the nav."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = make_org("alpha")
+        today = timezone.localdate()
+        cls.late = cls._reg("late", deadline=today - timedelta(days=1))
+        cls._reg("late approved", deadline=today - timedelta(days=1), status=Registration.APPROVED)
+        cls.soon = cls._reg("soon", deadline=today + timedelta(days=3))
+        cls._reg("far", deadline=today + timedelta(days=30))
+        cls.resolved = cls._reg("resolved", status=Registration.RESOLVED)
+
+    @classmethod
+    def _reg(cls, subject, project=None, **kwargs):
+        return Registration.objects.create(
+            project=project or cls.a["project"], discipline=cls.a["discipline"],
+            assigned_contractor=cls.a["contractor"], subject=subject, **kwargs,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.a["admin"])
+
+    def _lists(self, response):
+        return {l["heading"]: l for l in response.context["action_lists"]}
+
+    def test_action_lists_pick_the_right_rows(self):
+        lists = self._lists(self.client.get(reverse("core:overview")))
+        self.assertEqual(list(lists["Overskredet"]["registrations"]), [self.late])
+        self.assertEqual(list(lists["Afventer godkendelse"]["registrations"]), [self.resolved])
+        self.assertEqual(list(lists["Frist inden 7 dage"]["registrations"]), [self.soon])
+
+    def test_lists_are_capped_but_count_everything(self):
+        today = timezone.localdate()
+        for i in range(7):
+            self._reg(f"late {i}", deadline=today - timedelta(days=2))
+        response = self.client.get(reverse("core:overview"))
+        overdue = self._lists(response)["Overskredet"]
+        self.assertEqual(len(overdue["registrations"]), 5)
+        self.assertEqual(overdue["count"], 8)
+        self.assertContains(response, "Vis alle 8")
+
+    def test_with_stats_adds_overdue_resolved_and_last_registration(self):
+        project = Project.objects.with_stats().get(pk=self.a["project"].pk)
+        self.assertEqual(project.overdue_count, 1)
+        self.assertEqual(project.resolved_count, 1)
+        self.assertEqual(project.last_registration_at, self.resolved.created_at)
+
+    def test_nav_badge_shows_the_overdue_count_only_when_there_is_one(self):
+        response = self.client.get(reverse("core:projects"))
+        self.assertContains(response, "nav-badge")
+        self.assertEqual(response.context["nav_overdue_count"], 1)
+        self.late.mark_approved()
+        self.assertNotContains(self.client.get(reverse("core:projects")), "nav-badge")
+
+    def test_nav_badge_counts_only_the_members_own_projects(self):
+        other = Project.objects.create(organization=self.a["org"], name="Andet", slug="andet")
+        self._reg("elsewhere", project=other, deadline=timezone.localdate() - timedelta(days=1))
+        self.assertEqual(
+            self.client.get(reverse("core:overview")).context["nav_overdue_count"], 2
+        )
+        self.client.force_login(self.a["member"])
+        self.assertEqual(
+            self.client.get(reverse("core:overview")).context["nav_overdue_count"], 1
+        )
+
+    def test_due_week_filter_on_registrations(self):
+        response = self.client.get(reverse("core:registrations") + "?due=week")
+        self.assertEqual(list(response.context["registrations"]), [self.soon])
+
+    def test_projects_are_grouped_by_status(self):
+        done = Project.objects.create(
+            organization=self.a["org"], name="Færdig", slug="faerdig", status=Project.DONE
+        )
+        groups = {
+            g["status"]: g["projects"]
+            for g in self.client.get(reverse("core:projects")).context["groups"]
+        }
+        self.assertEqual(groups[Project.ACTIVE], [self.a["project"]])
+        self.assertEqual(groups[Project.PLANNED], [])
+        self.assertEqual(groups[Project.DONE], [done])
+
+
+class ProjectSlugTests(MediaTestCase):
+    """Slugs are unique per organization, not globally (unique_project_slug_per_org),
+    and the detail lookup is scoped to the caller's organization — so two
+    tenants can both have /projects/vester-hassing-skole/ and each sees only
+    their own."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = make_org("alpha")
+        cls.b = make_org("beta")
+        cls.a_school = Project.objects.create(
+            organization=cls.a["org"], name="Vester Hassing Skole", slug="vester-hassing-skole"
+        )
+        cls.b_school = Project.objects.create(
+            organization=cls.b["org"], name="Vester Hassing Skole", slug="vester-hassing-skole"
+        )
+
+    def test_same_slug_resolves_to_each_orgs_own_project(self):
+        url = reverse("core:project_detail", args=["vester-hassing-skole"])
+        self.client.force_login(self.a["admin"])
+        self.assertEqual(self.client.get(url).context["project"], self.a_school)
+        self.client.force_login(self.b["admin"])
+        self.assertEqual(self.client.get(url).context["project"], self.b_school)
+
+    def test_duplicate_name_within_one_org_is_a_form_error(self):
+        self.client.force_login(self.a["admin"])
+        response = self.client.post(
+            reverse("core:project_create"), {"name": "Vester Hassing Skole", "status": "active"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Der findes allerede et projekt med dette navn.")
+        self.assertEqual(Project.objects.filter(slug="vester-hassing-skole").count(), 2)
+
+
+class ContractorCountTests(MediaTestCase):
+    """The Firmaer card on a project counts that firm's registrations on
+    that project only."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = make_org("alpha")
+        cls.other = Project.objects.create(
+            organization=cls.a["org"], name="Andet", slug="andet"
+        )
+        cls.other.contractors.set([cls.a["contractor"]])
+        make = Registration.objects.create
+        common = {"discipline": cls.a["discipline"], "assigned_contractor": cls.a["contractor"]}
+        make(project=cls.a["project"], subject="løst", status=Registration.RESOLVED, **common)
+        make(project=cls.a["project"], subject="godkendt", status=Registration.APPROVED, **common)
+        make(project=cls.other, subject="andetsteds", **common)  # open, other project
+
+    def test_counts_are_scoped_to_the_project(self):
+        self.client.force_login(self.a["admin"])
+        response = self.client.get(reverse("core:project_detail", args=[self.a["project"].slug]))
+        [contractor] = response.context["contractors"]
+        # make_org's own registration is the one open row on this project.
+        self.assertEqual(
+            (contractor.open_count, contractor.resolved_count, contractor.approved_count),
+            (1, 1, 1),
+        )

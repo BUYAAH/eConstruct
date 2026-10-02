@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Invitation
+from .models import Invitation, normalize_email
 
 User = get_user_model()
 
@@ -13,9 +13,12 @@ _TEXT = {"class": "form-control"}
 class OrgAuthenticationForm(AuthenticationForm):
     """Login form, styled for the dashboard shell and labelled in Danish."""
 
+    # Still named `username`: AuthenticationForm hardcodes that field name and
+    # hands it to ModelBackend, which looks it up via USERNAME_FIELD. The name
+    # is Django plumbing; the value is an email address.
     username = forms.CharField(
         label="E-mail",
-        widget=forms.TextInput(attrs={**_TEXT, "autofocus": True, "autocomplete": "username"}),
+        widget=forms.EmailInput(attrs={**_TEXT, "autofocus": True, "autocomplete": "username"}),
     )
     password = forms.CharField(
         label="Adgangskode",
@@ -28,6 +31,12 @@ class OrgAuthenticationForm(AuthenticationForm):
         "inactive": "Din konto er deaktiveret. Kontakt din administrator.",
         "suspended": "Din organisations adgang er sat på pause. Kontakt din leverandør.",
     }
+
+    def clean_username(self):
+        """Normalise before authenticating, matching how the address was
+        stored. Without this, someone who types the address with the capital
+        their phone keyboard added is told their password is wrong."""
+        return normalize_email(self.cleaned_data.get("username"))
 
     def confirm_login_allowed(self, user):
         """Refuse a user whose organization has been suspended from Mothership.
@@ -77,11 +86,11 @@ class InvitationForm(forms.ModelForm):
         self.organization = organization
 
     def clean_email(self):
-        email = self.cleaned_data["email"].strip().lower()
-        # Usernames are the email address and globally unique, so an address
-        # can belong to only one organization. Checking here turns what would
-        # be an IntegrityError on accept into a form error on invite.
-        if User.objects.filter(username=email).exists():
+        email = normalize_email(self.cleaned_data["email"])
+        # The email is the account and is globally unique, so an address can
+        # belong to only one organization. Checking here turns what would be
+        # an IntegrityError on accept into a form error on invite.
+        if User.objects.filter(email=email).exists():
             raise forms.ValidationError("Der findes allerede en bruger med denne e-mail.")
         open_invite = Invitation.objects.filter(
             organization=self.organization, email=email, accepted_at__isnull=True

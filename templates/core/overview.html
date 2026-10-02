@@ -4,24 +4,86 @@
 {% block page_title %}Oversigt{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center mb-3">
-    <h2 class="h6 mb-0 flex-grow-1">Aktive projekter</h2>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:projects' %}">Alle projekter</a>
-</div>
+{% include "core/partials/stat_tiles.html" %}
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-xxl-3 g-3">
-    {% for p in active_projects %}
-    <div class="col">
-        {% include "core/partials/project_card.html" %}
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center text-body-secondary py-4">
-                Ingen aktive projekter.
+{% comment %}
+What needs doing, before what exists. The three lists are the daily loop of
+a byggeleder: chase what is late, sign off what the firm says is fixed, see
+what falls due next. core.views.overview caps each and passes the real
+total, so "Vis alle" only appears when there is more than what is shown.
+{% endcomment %}
+<h2 class="h6 mb-2">Kræver handling</h2>
+<div class="row g-3 mb-4">
+    {% for list in action_lists %}
+    <div class="col-12 col-xl-4">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="action-dot action-dot-{{ list.tone }}"></span>
+                <span class="flex-grow-1">{{ list.heading }}</span>
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">
+                    {{ list.count }}
+                </span>
             </div>
+            {% include "core/partials/action_list.html" with registrations=list.registrations empty=list.empty %}
+            {% if list.registrations|length < list.count %}
+            <a class="card-footer small text-decoration-none" href="{{ list.url }}">
+                Vis alle {{ list.count }}
+            </a>
+            {% endif %}
         </div>
     </div>
     {% endfor %}
 </div>
+
+<div class="d-flex align-items-center mb-2">
+    <h2 class="h6 mb-0 flex-grow-1">Aktive projekter</h2>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:projects' %}">Alle projekter</a>
+</div>
+
+{% comment %}
+Rows, not cards: Projekter is for browsing a site, this is for scanning
+which one needs you. The three counts use the status colours of the stat
+tiles above, and a zero goes grey so the eye lands on the non-zeros.
+{% endcomment %}
+<div class="card">
+    <ul class="list-group list-group-flush">
+        {% for p in active_projects %}
+        <li class="list-group-item project-row" data-row-href="{% url 'core:project_detail' p.slug %}">
+            <span class="min-width-0 flex-grow-1">
+                <a class="fw-semibold text-body text-decoration-none d-block text-truncate"
+                   href="{% url 'core:project_detail' p.slug %}">{{ p.name }}</a>
+                <span class="small text-body-secondary d-block text-truncate">{{ p.address|default:"—" }}</span>
+            </span>
+            <span class="count-pills">
+                <span class="count count-danger {% if not p.overdue_count %}is-zero{% endif %}">{{ p.overdue_count }} overskredet</span>
+                <span class="count count-warning {% if not p.open_count %}is-zero{% endif %}">{{ p.open_count }} åbne</span>
+                <span class="count count-info {% if not p.resolved_count %}is-zero{% endif %}">{{ p.resolved_count }} løst</span>
+            </span>
+            <span class="small text-body-secondary text-nowrap d-none d-md-inline project-row-when">
+                {% if p.last_registration_at %}Seneste reg. for {{ p.last_registration_at|timesince }} siden{% else %}Ingen registreringer{% endif %}
+            </span>
+        </li>
+        {% empty %}
+        <li class="list-group-item text-center text-body-secondary py-4">Ingen aktive projekter.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% comment %}
+Phones only: the one action a field worker opens the app for, reachable
+without first finding the project. A registration belongs to a project, so
+the button lists the active ones.
+{% endcomment %}
+{% if active_projects %}
+<div class="dropup app-fab d-lg-none">
+    <button class="btn btn-primary rounded-pill shadow" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false">+ Ny registrering</button>
+    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+        <li><h6 class="dropdown-header">Vælg projekt</h6></li>
+        {% for p in active_projects %}
+        <li><a class="dropdown-item" href="{% url 'core:registration_new' p.slug %}">{{ p.name }}</a></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
 {% endblock %}

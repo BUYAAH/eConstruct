@@ -1,6 +1,7 @@
 import json
 import re
 import uuid
+from datetime import timedelta
 from functools import wraps
 
 from django.contrib.auth import get_user_model
@@ -8,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -57,11 +59,7 @@ def org_admin_required(view):
 
 def _projects(request):
     """Projects the user may see: their own, or all of them for an org admin."""
-    user = request.user
-    qs = Project.objects.filter(organization=user.organization)
-    if not user.is_org_admin:
-        qs = qs.filter(members=user)
-    return qs
+    return Project.objects.for_user(request.user)
 
 
 def _get_project(request, slug):
@@ -109,24 +107,94 @@ def _stat_context(request):
     }
 
 
+ACTION_LIST_LIMIT = 5
+
+
 @login_required
 def overview(request):
+    """The landing page: what needs doing today, then the active sites.
+
+    Three short lists, each one step of a byggeleder's daily loop — chase
+    what is late, sign off what the firm says is fixed, see what falls due
+    next. Each is capped and links to the same rows on Registreringer, so
+    the count beside the heading is always the real total.
+    """
+    today = timezone.localdate()
     active = (
         _projects(request)
         .filter(status=Project.ACTIVE)
         .select_related("manager")
         .with_stats()
     )
-    return render(request, "core/overview.html", {"active_projects": active})
+    registrations = _registrations(request).select_related(
+        "project", "discipline", "assigned_contractor"
+    )
+    unapproved = registrations.exclude(status=Registration.APPROVED)
+    overdue = unapproved.filter(deadline__lt=today).order_by("deadline")
+    awaiting = registrations.filter(status=Registration.RESOLVED).order_by("-resolved_at")
+    due_soon = unapproved.filter(
+        deadline__gte=today, deadline__lt=today + timedelta(days=7)
+    ).order_by("deadline")
+    registrations_url = reverse("core:registrations")
+
+    def action_list(heading, tone, qs, query, empty):
+        return {
+            "heading": heading,
+            "tone": tone,
+            "registrations": qs[:ACTION_LIST_LIMIT],
+            "count": qs.count(),
+            "url": f"{registrations_url}?{query}",
+            "empty": empty,
+        }
+
+    return render(
+        request,
+        "core/overview.html",
+        {
+            "active_projects": active,
+            "action_lists": [
+                action_list(
+                    "Overskredet", "danger", overdue, "overdue=1",
+                    "Intet er overskredet.",
+                ),
+                action_list(
+                    "Afventer godkendelse", "info", awaiting, "status=resolved",
+                    "Intet afventer godkendelse.",
+                ),
+                action_list(
+                    "Frist inden 7 dage", "warning", due_soon, "due=week",
+                    "Ingen frister de næste 7 dage.",
+                ),
+            ],
+            **_stat_context(request),
+        },
+    )
 
 
 # --- Projects ----------------------------------------------------------------
 
 
+# Section order on Projekter: the sites being worked on first, finished ones
+# last (and collapsed in the template). Plural headings, unlike the badge.
+PROJECT_GROUPS = [
+    (Project.ACTIVE, "Aktive"),
+    (Project.PLANNED, "Planlagte"),
+    (Project.DONE, "Afsluttede"),
+]
+
+
 @login_required
 def projects(request):
-    qs = _projects(request).select_related("manager").with_stats()
-    return render(request, "core/projects.html", {"projects": qs, **_stat_context(request)})
+    qs = list(_projects(request).select_related("manager").with_stats())
+    groups = [
+        {"status": status, "label": label, "projects": [p for p in qs if p.status == status]}
+        for status, label in PROJECT_GROUPS
+    ]
+    return render(
+        request,
+        "core/projects.html",
+        {"groups": groups, "has_projects": bool(qs), **_stat_context(request)},
+    )
 
 
 @org_admin_required
@@ -173,16 +241,30 @@ def project_detail(request, slug):
         "discipline", "assigned_contractor", "responsible", "author", "drawing"
     ).prefetch_related("photos")
 
+    # Per firm, on this project only: a contractor works across sites, so
+    # without the project filter its Hasserisvej backlog would show here.
+    def per_status(status):
+        return models.Count(
+            "registrations",
+            filter=models.Q(registrations__project=project, registrations__status=status),
+        )
+
+    contractors = project.contractors.annotate(
+        open_count=per_status(Registration.OPEN),
+        resolved_count=per_status(Registration.RESOLVED),
+        approved_count=per_status(Registration.APPROVED),
+    )
+
     return render(
         request,
         "core/project_detail.html",
         {
             "project": project,
+            "contractors": contractors,
             "registrations": registrations,
             # Annotated, not drawing.registrations.count in the template —
-            # that ran a query per drawing. select_related for the same reason:
-            # the table shows who uploaded each one.
-            "drawings": project.drawings.select_related("uploaded_by").annotate(
+            # that ran a query per drawing.
+            "drawings": project.drawings.annotate(
                 registration_count=models.Count("registrations")
             ),
             "open_count": registrations.filter(status=Registration.OPEN).count(),
@@ -356,6 +438,11 @@ def registrations(request):
         qs = qs.exclude(status=Registration.APPROVED).filter(
             deadline__lt=timezone.localdate()
         )
+    if request.GET.get("due") == "week":
+        today = timezone.localdate()
+        qs = qs.exclude(status=Registration.APPROVED).filter(
+            deadline__gte=today, deadline__lt=today + timedelta(days=7)
+        )
     project_slug = request.GET.get("project", "")
     if project_slug:
         qs = qs.filter(project__slug=project_slug)
@@ -376,6 +463,7 @@ def registrations(request):
                 "project": project_slug,
                 "discipline": discipline_id,
                 "overdue": request.GET.get("overdue", ""),
+                "due": request.GET.get("due", ""),
             },
         },
     )
@@ -601,17 +689,17 @@ def pins(request, pk):
 def drawing_registrations(request, pk):
     """HTMX partial: every registration on a drawing, listed under the viewer."""
     drawing = get_object_or_404(_drawings(request), pk=pk)
+    registrations = drawing.registrations.select_related(
+        "discipline", "assigned_contractor", "author"
+    ).prefetch_related("photos")
+    # By urgency rather than date: overdue first, then åben, løst, godkendt,
+    # and by number within each. Sorted in Python because overdue is derived
+    # (D8), never a column to ORDER BY, and one drawing's list is short.
+    rank = {"overdue": 0, Registration.OPEN: 1, Registration.RESOLVED: 2, Registration.APPROVED: 3}
     return render(
         request,
-        "core/partials/registration_rows.html",
-        {
-            "registrations": drawing.registrations.select_related(
-                "discipline", "assigned_contractor", "author"
-            ).prefetch_related("photos"),
-            # In the viewer a row jumps to the pin's page rather than
-            # navigating away from the drawing.
-            "row_jump": True,
-        },
+        "core/partials/viewer_rows.html",
+        {"registrations": sorted(registrations, key=lambda r: (rank[r.state], r.number))},
     )
 
 

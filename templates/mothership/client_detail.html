@@ -128,9 +128,9 @@ before they call (ROADMAP.md §7, friction 4).
                 {% for u in users %}
                 <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
                     <span class="{% if not u.is_active %}text-body-secondary text-decoration-line-through{% endif %}">
-                        {{ u.get_full_name|default:u.username }}
+                        {{ u.get_full_name|default:u.email }}
                     </span>
-                    <span class="small text-body-secondary">{{ u.username }}</span>
+                    <span class="small text-body-secondary">{{ u.email }}</span>
                     {% if u.is_org_admin %}
                     <span class="badge text-bg-primary">Admin</span>
                     {% endif %}

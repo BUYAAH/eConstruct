@@ -1,7 +1,12 @@
 {% comment %}
-One project card, shared by Projekter and Oversigt so the two can't drift.
-Expects a project annotated by ProjectQuerySet.with_stats() — the counts and
-`progress` both read from those annotations.
+One project card on Projekter. Expects a project annotated by
+ProjectQuerySet.with_stats() — every number here reads from those
+annotations.
+
+The three counts are the ones a project manager scans a board for — which
+site is late, what is open, what is waiting to be signed off — in the same
+colours as the stat tiles and the status badges. Drawing and firm counts
+live on the project page; they don't help pick a card.
 
 The whole card is the link: it holds no other interactive element.
 {% endcomment %}
@@ -19,29 +24,40 @@ The whole card is the link: it holds no other interactive element.
 
         <div class="row g-0 text-center project-stats mb-3">
             <div class="col">
-                <div class="fs-5 fw-semibold lh-1">{{ p.drawing_count }}</div>
-                <div class="small text-body-secondary">Tegninger</div>
-            </div>
-            <div class="col">
-                <div class="fs-5 fw-semibold lh-1">{{ p.contractor_count }}</div>
-                <div class="small text-body-secondary">Firmaer</div>
+                <div class="fs-5 fw-semibold lh-1 {% if p.overdue_count %}text-danger-emphasis{% endif %}">
+                    {{ p.overdue_count }}
+                </div>
+                <div class="small text-body-secondary">Overskredet</div>
             </div>
             <div class="col">
                 <div class="fs-5 fw-semibold lh-1 {% if p.open_count %}text-warning-emphasis{% endif %}">
                     {{ p.open_count }}
                 </div>
-                <div class="small text-body-secondary">Åbne reg.</div>
+                <div class="small text-body-secondary">Åbne</div>
+            </div>
+            <div class="col">
+                <div class="fs-5 fw-semibold lh-1 {% if p.resolved_count %}text-info-emphasis{% endif %}">
+                    {{ p.resolved_count }}
+                </div>
+                <div class="small text-body-secondary">Afventer</div>
             </div>
         </div>
 
+        {% comment %}
+        The bar is the status breakdown, not "progress": approved, then
+        resolved, then open, each segment sized by its count (flex-grow, so
+        no percentages to round). A site with nothing filed shows an empty
+        track — nothing has been verified yet.
+        {% endcomment %}
         <div class="mb-3">
             <div class="d-flex justify-content-between small text-body-secondary mb-1">
-                <span>Fremdrift</span><span>{{ p.progress }}%</span>
+                <span>Godkendt</span><span>{{ p.approved_count }} af {{ p.registration_count }}</span>
             </div>
-            <div class="progress" style="height: .4rem;" role="progressbar"
-                 aria-valuenow="{{ p.progress }}" aria-valuemin="0" aria-valuemax="100"
-                 aria-label="Fremdrift for {{ p.name }}">
-                <div class="progress-bar" style="width: {{ p.progress }}%;"></div>
+            <div class="status-bar" role="img"
+                 aria-label="{{ p.approved_count }} godkendt, {{ p.resolved_count }} løst, {{ p.open_count }} åbne">
+                <span class="status-bar-approved" style="flex-grow: {{ p.approved_count }};"></span>
+                <span class="status-bar-resolved" style="flex-grow: {{ p.resolved_count }};"></span>
+                <span class="status-bar-open" style="flex-grow: {{ p.open_count }};"></span>
             </div>
         </div>
 
@@ -49,12 +65,13 @@ The whole card is the link: it holds no other interactive element.
             <svg class="app-icon flex-shrink-0"><use href="#i-building"></use></svg>
             <span class="text-truncate">{{ p.manager|default:"Ingen projektleder" }}</span>
             {% comment %}
-            "Redigeret", not "Ændret": updated_at is auto_now on Project, so it
-            moves when the project row is saved — a rename, a status change —
-            and not when a registration is added or a drawing uploaded. Calling
-            it "ændret" promised activity it doesn't track.
+            The last registration filed, not the project row's updated_at:
+            that only moves on a rename or status change, which is not what
+            "activity" means on a site.
             {% endcomment %}
-            <span class="ms-auto text-nowrap">Redigeret for {{ p.updated_at|timesince }} siden</span>
+            <span class="ms-auto text-nowrap">
+                {% if p.last_registration_at %}Seneste reg. for {{ p.last_registration_at|timesince }} siden{% else %}Ingen registreringer{% endif %}
+            </span>
         </div>
 
     </div>

@@ -81,6 +81,15 @@ class Contractor(BaseModel):
 
 
 class ProjectQuerySet(models.QuerySet):
+    def for_user(self, user):
+        """What `user` may see: their organization's projects, and for a plain
+        member only the ones they are on (D9). Filtering on organization_id
+        keeps an orgless user at an empty queryset rather than an error."""
+        qs = self.filter(organization_id=user.organization_id)
+        if not user.is_org_admin:
+            qs = qs.filter(members=user)
+        return qs
+
     def with_stats(self):
         """The counts every project card shows, in one query.
 
@@ -102,6 +111,21 @@ class ProjectQuerySet(models.QuerySet):
                 filter=models.Q(registrations__status=Registration.APPROVED),
                 distinct=True,
             ),
+            resolved_count=models.Count(
+                "registrations",
+                filter=models.Q(registrations__status=Registration.RESOLVED),
+                distinct=True,
+            ),
+            # Same rule as Registration.overdue: past deadline and not yet
+            # signed off. Resolved-but-late still counts — the firm fixed it,
+            # but nobody has verified that yet.
+            overdue_count=models.Count(
+                "registrations",
+                filter=~models.Q(registrations__status=Registration.APPROVED)
+                & models.Q(registrations__deadline__lt=timezone.localdate()),
+                distinct=True,
+            ),
+            last_registration_at=models.Max("registrations__created_at"),
         )
 
 
@@ -300,6 +324,13 @@ class Registration(BaseModel):
             self.deadline and self.status != self.APPROVED
             and self.deadline < timezone.localdate()
         )
+
+    @property
+    def state(self):
+        """The status as it is shown: overdue outranks what is stored, the
+        same rule as status_badge.html. One of overdue/open/resolved/approved,
+        never overlapping, so counts by state add up to the total."""
+        return "overdue" if self.overdue else self.status
 
     @property
     def has_pin(self):

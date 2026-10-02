@@ -32,8 +32,8 @@ User = get_user_model()
 PASSWORD = "pw-for-tests-123"
 
 
-def make_superuser(username="martin@micki.dk"):
-    return User.objects.create_superuser(username=username, password=PASSWORD)
+def make_superuser(email="martin@micki.dk"):
+    return User.objects.create_superuser(email=email, password=PASSWORD)
 
 
 class GateTests(TestCase):
@@ -44,13 +44,13 @@ class GateTests(TestCase):
     def setUpTestData(cls):
         cls.org = Organization.objects.create(name="Kunde A/S", slug="kunde")
         cls.customer_admin = User.objects.create_user(
-            username="admin@kunde.dk", password=PASSWORD,
+            email="admin@kunde.dk", password=PASSWORD,
             organization=cls.org, is_org_admin=True,
         )
         # is_staff on its own must not be enough — it also opens Django admin
         # and is the flag one would hand a support person.
         cls.staffer = User.objects.create_user(
-            username="support@micki.dk", password=PASSWORD, is_staff=True
+            email="support@micki.dk", password=PASSWORD, is_staff=True
         )
         cls.superuser = make_superuser()
 
@@ -156,10 +156,11 @@ class ClientCreateTests(TestCase):
         admin = org.users.get()
         self.assertTrue(admin.is_org_admin)
         self.assertFalse(admin.is_superuser)
-        # Username *is* the email (ROADMAP.md §7, friction 2). Set differently
-        # the account simply cannot log in, and nothing would say so.
-        self.assertEqual(admin.username, "ida@nordjyskbyg.dk")
+        # The email *is* the account (ROADMAP.md §7, friction 2) — there is
+        # no second field left to set differently. get_username() reads
+        # USERNAME_FIELD, so this pins the wiring, not just the value.
         self.assertEqual(admin.email, "ida@nordjyskbyg.dk")
+        self.assertEqual(admin.get_username(), "ida@nordjyskbyg.dk")
         self.assertEqual(len(mail.outbox), 0)
 
         self.client.logout()
@@ -173,7 +174,7 @@ class ClientCreateTests(TestCase):
         Project.objects.create(organization=other, name="Hemmeligt", slug="hemmeligt")
 
         self.post(access=ClientCreateForm.PASSWORD, password="Fundament-2026!")
-        admin = User.objects.get(username="ida@nordjyskbyg.dk")
+        admin = User.objects.get(email="ida@nordjyskbyg.dk")
 
         self.client.force_login(admin)
         response = self.client.get(reverse("core:projects"))
@@ -194,11 +195,11 @@ class ClientCreateTests(TestCase):
         self.assertEqual(Organization.objects.count(), 1)
 
     def test_email_already_in_use_anywhere_is_rejected(self):
-        """An address is a username, and usernames are global — so it belongs
-        to exactly one organization."""
+        """An address is the account, and accounts are global — so it
+        belongs to exactly one organization."""
         existing = Organization.objects.create(name="Anden", slug="anden")
         User.objects.create_user(
-            username="ida@nordjyskbyg.dk", password=PASSWORD, organization=existing
+            email="ida@nordjyskbyg.dk", password=PASSWORD, organization=existing
         )
         response = self.post()
         self.assertFormError(
@@ -232,7 +233,7 @@ class SuspensionTests(TestCase):
         cls.superuser = make_superuser()
         cls.org = Organization.objects.create(name="Kunde A/S", slug="kunde")
         cls.user = User.objects.create_user(
-            username="bruger@kunde.dk", password=PASSWORD, organization=cls.org
+            email="bruger@kunde.dk", password=PASSWORD, organization=cls.org
         )
 
     def suspend(self):
@@ -302,8 +303,8 @@ class ClientListTests(TestCase):
         cls.a = Organization.objects.create(name="Alfa Byg", slug="alfa")
         cls.b = Organization.objects.create(name="Beta Entreprise", slug="beta")
 
-        User.objects.create_user(username="a1@alfa.dk", password=PASSWORD, organization=cls.a)
-        User.objects.create_user(username="a2@alfa.dk", password=PASSWORD, organization=cls.a)
+        User.objects.create_user(email="a1@alfa.dk", password=PASSWORD, organization=cls.a)
+        User.objects.create_user(email="a2@alfa.dk", password=PASSWORD, organization=cls.a)
         project = Project.objects.create(organization=cls.a, name="Sygehus", slug="sygehus")
         discipline = cls.a.disciplines.create(name="El")
         contractor = cls.a.contractors.create(name="Nord El")
@@ -370,7 +371,7 @@ class HomeTests(TestCase):
         cls.superuser = make_superuser()
         cls.org = Organization.objects.create(name="Kunde A/S", slug="kunde")
         cls.customer = User.objects.create_user(
-            username="bruger@kunde.dk", password=PASSWORD, organization=cls.org
+            email="bruger@kunde.dk", password=PASSWORD, organization=cls.org
         )
 
     def login(self, username, **extra):
@@ -430,9 +431,9 @@ class OrglessUserTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.orgless = User.objects.create_user(username="ingen@micki.dk", password=PASSWORD)
+        cls.orgless = User.objects.create_user(email="ingen@micki.dk", password=PASSWORD)
         cls.orgless_admin = User.objects.create_user(
-            username="odd@micki.dk", password=PASSWORD, is_org_admin=True
+            email="odd@micki.dk", password=PASSWORD, is_org_admin=True
         )
 
     def test_customer_pages_render_empty_rather_than_500(self):

@@ -165,6 +165,7 @@ body {
 .app-brand:hover { color: #fff; }
 
 .app-nav-link {
+    position: relative;
     display: flex;
     align-items: center;
     gap: .75rem;
@@ -185,6 +186,34 @@ body {
 .app-nav-link.active {
     background: var(--app-sidebar-hover);
     color: #fff;
+}
+
+/* A bar on the leading edge, not only the tint: on the graphite rail the
+   tint alone is easy to miss. */
+.app-nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .6rem;
+    bottom: .6rem;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--app-accent);
+}
+
+/* The overdue count beside Registreringer — rail, offcanvas and tab bar.
+   Red because it is the one number here that means "late". */
+.nav-badge {
+    font-size: .7rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: .25rem .45rem;
+    border-radius: 999px;
+    background: #B91C1C;
+    color: #fff;
+    min-width: 1.5em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Base size for every sprite icon. An inline <svg> with no width/height falls
@@ -212,6 +241,85 @@ body {
 
 .app-sidebar-footer {
     border-top: 1px solid rgba(255, 255, 255, .1);
+}
+
+.app-sidebar-footer-muted { color: rgba(255, 255, 255, .5); }
+
+.app-sidebar-footer-link {
+    color: var(--app-accent);
+    text-decoration: none;
+}
+
+.app-sidebar-footer-link:hover { color: #fff; }
+
+/* --- Bottom tab bar (<992px) ------------------------------------------- */
+
+/* The rail is hidden below lg and the four destinations move under the
+   thumb. --app-tabbar-h is 0 on desktop, so the viewer's height maths and
+   the page's bottom padding can subtract it unconditionally. */
+:root { --app-tabbar-h: 0px; }
+
+@media (max-width: 991.98px) {
+    :root { --app-tabbar-h: 56px; }
+
+    .app-main {
+        padding-bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
+    }
+}
+
+.app-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1030;  /* under the offcanvas (1045) and its backdrop (1040) */
+    display: flex;
+    height: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bs-body-bg);
+    border-top: 1px solid var(--app-border);
+}
+
+.app-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .15rem;
+    font-size: .7rem;
+    color: var(--app-muted);
+    text-decoration: none;
+    background: none;
+    border: 0;
+    padding: 0;
+}
+
+.app-tab .app-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.app-tab.active { color: var(--app-accent-dk); }
+
+.app-tab-icon {
+    position: relative;
+    display: inline-flex;
+}
+
+.app-tab-icon .nav-badge {
+    position: absolute;
+    top: -.4rem;
+    left: calc(100% - .5rem);
+}
+
+/* The phone-only "+ Ny registrering" on Oversigt, above the tab bar. */
+.app-fab {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom) + 1rem);
+    z-index: 1020;
 }
 
 .brand-dot {
@@ -366,10 +474,39 @@ a.stat-tile:focus-visible {
     line-height: 1;
 }
 
-/* Dealt with, but still worth seeing in context — dimmed rather than hidden,
-   so an approved item doesn't look like it was never raised. */
+/* Status on the pin itself, in the language of the status badges. Overdue is
+   loud — a red ring — because that is the thing worth seeing first. Løst is
+   hollow: fixed, waiting for sign-off. Godkendt is dimmed rather than hidden,
+   so an approved item doesn't look like it was never raised, and carries a
+   check so it can't be mistaken for løst at a glance. The classes come from
+   Registration.state, so a løst item past its deadline shows as overdue. */
+.pin.pin-overdue {
+    border-color: var(--bs-danger);
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, .35), 0 1px 5px rgba(0, 0, 0, .45);
+}
+
 .pin.pin-resolved {
-    opacity: .45;
+    background-color: #fff;
+    border-color: var(--pin-color, #0d6efd);
+    color: var(--pin-color, #0d6efd);
+}
+
+.pin.pin-approved {
+    opacity: .5;
+}
+
+.pin.pin-approved::after {
+    content: "\2713";
+    position: absolute;
+    top: -6px;
+    right: -7px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bs-success);
+    color: #fff;
+    font-size: 9px;
+    line-height: 14px;
 }
 
 /* invisible halo so the touch target is ~44px */
@@ -381,7 +518,24 @@ a.stat-tile:focus-visible {
 
 .pin.pin-hidden { display: none; }
 
-#pin-layer.add-mode { cursor: crosshair; }
+#pin-layer { cursor: crosshair; }
+
+/* The drawing's own scroll box. Bounded to the screen so that zooming in
+   scrolls the drawing rather than growing the page; the 56px is the sticky
+   topbar. touch-action: one finger pans natively, two are the pinch handled
+   in viewer.js, and the browser's own page zoom is out — it would scale the
+   toolbar and pins along with the drawing. */
+.viewer-scroller {
+    position: relative;
+    overflow: auto;
+    max-height: calc(100vh - 56px - 1rem - var(--app-tabbar-h));
+    max-height: calc(100dvh - 56px - 1rem - var(--app-tabbar-h));
+    touch-action: pan-x pan-y;
+}
+
+.viewer-scroller.dragging #pin-layer {
+    cursor: grabbing;
+}
 
 .discipline-chip {
     --chip: #0d6efd;
@@ -403,7 +557,7 @@ a.stat-tile:focus-visible {
  * viewer.js has one set of buttons to bind.
  *
  * The nav and the actions never shrink: whatever else happens, you can always
- * change page and always reach + Registrering. The chips absorb the pressure,
+ * change page and always reach the ⋯ menu. The chips absorb the pressure,
  * because a chip row that scrolls is usable and a page control that has been
  * squeezed to nothing is not. */
 .viewer-toolbar {
@@ -468,7 +622,7 @@ a.stat-tile:focus-visible {
 
 /* The toolbar row above it does not wrap, so it has to fit the narrowest
    phone we support. Width lives here rather than inline precisely so it can
-   shrink: at 360px the row is page nav + button + kebab with nothing to
+   shrink: at 360px the row is page nav + zoom + kebab with nothing to
    spare, and a drawing with a three-digit page count is what tips it over. */
 .page-input {
     width: 4.5rem;
@@ -477,6 +631,74 @@ a.stat-tile:focus-visible {
 @media (max-width: 400px) {
     .page-input {
         width: 3.25rem;
+    }
+}
+
+/* Status chips over the list. The badge colours (status_badge.html) when on,
+   grey when off, so a switched-off state still reads as a state and not as a
+   disabled button. Tabular figures keep the counts from jiggling. */
+.status-chip {
+    border: 1.5px solid var(--sc-bd);
+    background: var(--sc-bg);
+    color: var(--sc-fg);
+    font-variant-numeric: tabular-nums;
+}
+
+.status-chip:not(.active) {
+    background: transparent;
+    color: var(--bs-secondary-color);
+    border-color: var(--bs-border-color);
+}
+
+.status-chip[data-state="overdue"] {
+    --sc-bg: var(--bs-danger-bg-subtle);
+    --sc-fg: var(--bs-danger-text-emphasis);
+    --sc-bd: var(--bs-danger-border-subtle);
+}
+
+.status-chip[data-state="open"] {
+    --sc-bg: var(--bs-warning-bg-subtle);
+    --sc-fg: var(--bs-warning-text-emphasis);
+    --sc-bd: var(--bs-warning-border-subtle);
+}
+
+.status-chip[data-state="resolved"] {
+    --sc-bg: var(--bs-info-bg-subtle);
+    --sc-fg: var(--bs-info-text-emphasis);
+    --sc-bd: var(--bs-info-border-subtle);
+}
+
+.status-chip[data-state="approved"] {
+    --sc-bg: var(--bs-success-bg-subtle);
+    --sc-fg: var(--bs-success-text-emphasis);
+    --sc-bd: var(--bs-success-border-subtle);
+}
+
+/* Two columns from xxl: the drawing with its toolbar on the left, the list on
+   the right and sticky, so map and list are on screen together and nobody
+   scrolls between them. xxl rather than xl because the rail takes 250px of an
+   xl viewport, and what was left for the drawing came to under 550px — less
+   than a phone held sideways. Below xxl the two stack as they always did. The
+   list column scrolls inside itself when it is taller than the viewport; the
+   56px is the sticky topbar. */
+.viewer-side {
+    margin-top: 1rem;
+}
+
+@media (min-width: 1400px) {
+    .viewer-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 420px;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .viewer-side {
+        margin-top: 0;
+        position: sticky;
+        top: calc(56px + 1rem);
+        max-height: calc(100vh - 56px - 2rem);
+        overflow-y: auto;
     }
 }
 
@@ -515,12 +737,78 @@ a.project-card:focus-visible {
     a.project-card:hover { transform: none; }
 }
 
-.project-card .progress {
-    background-color: var(--app-border);
+/* Status breakdown on a card: approved, resolved, open, each segment sized
+   by flex-grow from its count. Mid-tones of the badge hues — the tile inks
+   are too dark for a 6px strip. */
+.status-bar {
+    display: flex;
+    height: .4rem;
+    border-radius: .2rem;
+    overflow: hidden;
+    background: var(--app-border);
 }
 
-.project-card .progress-bar {
-    background-color: var(--app-accent-dk);
+.status-bar > span { display: block; }
+.status-bar-approved { background: #16A34A; }
+.status-bar-resolved { background: #3B82F6; }
+.status-bar-open     { background: #F59E0B; }
+
+/* --- Oversigt ------------------------------------------------------------ */
+
+.action-dot {
+    width: .6rem;
+    height: .6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.action-dot-danger  { background: #B91C1C; }
+.action-dot-warning { background: #B45309; }
+.action-dot-info    { background: #1D4ED8; }
+
+.action-row,
+.project-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+/* Small status counts in a row — the project rows on Oversigt and the firm
+   rows on a project. Same tints as the stat tiles; a zero goes grey so the
+   eye lands on the non-zeros. */
+.count-pills {
+    display: flex;
+    gap: .35rem;
+    flex-shrink: 0;
+    font-size: .78rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.count-pills .count {
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.count-danger  { background: #FEE2E2; color: #B91C1C; }
+.count-warning { background: #FEF3C7; color: #B45309; }
+.count-info    { background: #DBEAFE; color: #1D4ED8; }
+.count-success { background: #DCFCE7; color: #15803D; }
+
+.count-pills .count.is-zero {
+    background: var(--app-canvas);
+    color: var(--app-muted);
+}
+
+/* The firm card is a third of the page, so its pills always drop under the
+   name — otherwise "Brandsikring Danmark" truncates beside them. The project
+   rows on Oversigt have the full width and only wrap on phones. */
+.contractor-row { flex-wrap: wrap; }
+.contractor-row .count-pills { width: 100%; }
+
+@media (max-width: 575.98px) {
+    .project-row { flex-wrap: wrap; }
+    .count-pills { width: 100%; }
 }
 
 /* The cards' headers hold different content — text + badge, text + button,
@@ -620,7 +908,7 @@ a.project-card:focus-visible {
    list-group-item so three cards' worth of rows stay compact. */
 .contractor-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: .75rem;
     padding-top: .45rem;
     padding-bottom: .45rem;

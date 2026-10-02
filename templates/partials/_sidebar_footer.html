@@ -1,0 +1,15 @@
+{% comment %}
+Who is logged in, in the rail and the offcanvas. The avatar menu top-right
+is the desktop convention; on a phone the bottom of the "Mere" sheet is
+where people look for "who am I" and "log ud", so the same facts live here.
+{% endcomment %}
+<div class="app-sidebar-footer mt-auto pt-3 px-3 small">
+    <div class="text-white text-truncate">{{ user.get_full_name|default:user.email }}</div>
+    <div class="app-sidebar-footer-muted text-truncate">
+        {% if user.is_org_admin %}Administrator{% else %}Bruger{% endif %} · {{ user.organization.name }}
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}" class="mt-2">
+        {% csrf_token %}
+        <button class="btn btn-link btn-sm p-0 app-sidebar-footer-link">Log ud</button>
+    </form>
+</div>

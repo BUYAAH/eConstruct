@@ -153,10 +153,11 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Product name shown to users. Deliberately the ONLY place it is spelled out —
-# it went Micki -> ImagR -> EzConstruct and is still a working title. Templates
-# read it as {{ brand }} via core.context_processors.brand. Internal identifiers
-# (repo, CSS classes, `micki:*` JS events) are NOT branded and never change.
-BRAND_NAME = "EzConstruct"
+# it went Micki -> ImagR -> EzConstruct -> eConstruct, and four renames in is
+# the proof that keeping it to one constant was worth it. Templates read it as
+# {{ brand }} via core.context_processors.brand. Internal identifiers (repo,
+# CSS classes, `micki:*` JS events) are NOT branded and never change.
+BRAND_NAME = "eConstruct"
 
 AUTH_USER_MODEL = "accounts.User"
 

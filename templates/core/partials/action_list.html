@@ -1,0 +1,30 @@
+{% comment %}
+One "Kræver handling" list on Oversigt: a few registrations, each a row you
+can click into. Takes `registrations` (already capped by the view) and
+`empty`, the line shown when there is nothing to do.
+
+Rows carry number, subject, project · firm and the deadline. The deadline is
+red only when it is already past — in the "Frist inden 7 dage" list it is
+simply when.
+{% endcomment %}
+<ul class="list-group list-group-flush">
+    {% for r in registrations %}
+    <li class="list-group-item action-row" data-row-href="{% url 'core:registration_detail' r.pk %}">
+        <span class="small text-body-secondary text-nowrap">{{ r.label }}</span>
+        <span class="min-width-0 flex-grow-1">
+            <a class="text-body text-decoration-none d-block text-truncate"
+               href="{% url 'core:registration_detail' r.pk %}">{{ r.subject }}</a>
+            <span class="small text-body-secondary d-block text-truncate">
+                {{ r.project.name }} · {{ r.assigned_contractor.name }}
+            </span>
+        </span>
+        {% if r.deadline %}
+        <span class="small text-nowrap {% if r.overdue %}text-danger-emphasis fw-semibold{% else %}text-body-secondary{% endif %}">
+            {{ r.deadline|date:"j. M" }}
+        </span>
+        {% endif %}
+    </li>
+    {% empty %}
+    <li class="list-group-item small text-body-secondary">{{ empty }}</li>
+    {% endfor %}
+</ul>

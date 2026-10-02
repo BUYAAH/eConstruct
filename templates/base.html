@@ -24,9 +24,7 @@
         <span class="brand-dot"></span>{{ brand }}
     </a>
     {% include "partials/_sidenav.html" %}
-    <div class="app-sidebar-footer mt-auto pt-3 px-3 small" style="color: rgba(255,255,255,.5);">
-        {{ user.organization.name }}
-    </div>
+    {% include "partials/_sidebar_footer.html" %}
 </aside>
 
 {# Same list as an offcanvas below 992px #}
@@ -41,24 +39,37 @@
     </div>
     <div class="offcanvas-body pt-0 d-flex flex-column">
         {% include "partials/_sidenav.html" %}
-        <div class="app-sidebar-footer mt-auto pt-3 px-3 small" style="color: rgba(255,255,255,.5);">
-            {{ user.organization.name }}
-        </div>
+        {% include "partials/_sidebar_footer.html" %}
     </div>
 </div>
+
+{# Below 992px the four destinations sit under the thumb; "Mere" opens the #}
+{# offcanvas above for the rest. Hidden on desktop, where the rail is. #}
+<nav class="app-tabbar d-lg-none" aria-label="Hovednavigation">
+    <a class="app-tab {% if nav_section == 'overview' %}active{% endif %}" href="{% url 'core:overview' %}">
+        <svg class="app-icon"><use href="#i-overview"></use></svg><span>Oversigt</span>
+    </a>
+    <a class="app-tab {% if nav_section == 'projects' %}active{% endif %}" href="{% url 'core:projects' %}">
+        <svg class="app-icon"><use href="#i-projects"></use></svg><span>Projekter</span>
+    </a>
+    <a class="app-tab {% if nav_section == 'registrations' %}active{% endif %}" href="{% url 'core:registrations' %}">
+        <span class="app-tab-icon">
+            <svg class="app-icon"><use href="#i-registrations"></use></svg>
+            {% if nav_overdue_count %}<span class="nav-badge">{{ nav_overdue_count }}</span>{% endif %}
+        </span>
+        <span>Registreringer</span>
+    </a>
+    <button class="app-tab" type="button" data-bs-toggle="offcanvas" data-bs-target="#app-nav"
+            aria-controls="app-nav">
+        <svg class="app-icon"><use href="#i-menu"></use></svg><span>Mere</span>
+    </button>
+</nav>
 {% endif %}
 
 <div class="{% if user.is_authenticated %}app-main{% endif %}">
 
     {% if user.is_authenticated %}
     <header class="app-topbar sticky-top d-flex align-items-center gap-2 px-3">
-        <button class="btn btn-sm btn-outline-secondary border-0 d-lg-none px-2" type="button"
-                data-bs-toggle="offcanvas" data-bs-target="#app-nav" aria-label="Åbn menu">
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
-                <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
-            </svg>
-        </button>
-
         {% comment %}
         Pages with a hierarchy override topbar_title with a breadcrumb;
         flat pages just fill in page_title.
@@ -69,11 +80,11 @@
 
         <div class="dropdown ms-auto">
             <button class="btn p-0 border-0 avatar" data-bs-toggle="dropdown" aria-label="Kontomenu">
-                {% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.username|slice:":2"|upper }}{% endif %}
+                {% if user.first_name %}{{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}{% else %}{{ user.email|slice:":2"|upper }}{% endif %}
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                 <li class="dropdown-item-text">
-                    <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
+                    <div class="fw-semibold">{{ user.get_full_name|default:user.email }}</div>
                     <div class="small text-body-secondary">{{ user.email }}</div>
                     <div class="small text-body-secondary">{{ user.organization.name }}</div>
                 </li>

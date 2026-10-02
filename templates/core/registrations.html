@@ -45,12 +45,19 @@
                 </select>
             </div>
             <div class="col-6 col-md-3 d-flex gap-2">
-                <div class="form-check align-self-center flex-grow-1">
-                    <input class="form-check-input" type="checkbox" name="overdue" value="1"
-                           id="f-overdue" {% if selected.overdue == "1" %}checked{% endif %}>
-                    <label class="form-check-label small" for="f-overdue">Kun overskredne</label>
+                <div class="align-self-center flex-grow-1">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="overdue" value="1"
+                               id="f-overdue" {% if selected.overdue == "1" %}checked{% endif %}>
+                        <label class="form-check-label small" for="f-overdue">Kun overskredne</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="due" value="week"
+                               id="f-due" {% if selected.due == "week" %}checked{% endif %}>
+                        <label class="form-check-label small" for="f-due">Frist inden 7 dage</label>
+                    </div>
                 </div>
-                <button class="btn btn-sm btn-primary flex-shrink-0">Filtrér</button>
+                <button class="btn btn-sm btn-primary flex-shrink-0 align-self-center">Filtrér</button>
             </div>
         </form>
     </div>

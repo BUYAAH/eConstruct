@@ -280,6 +280,22 @@ Ends with: upload a real drawing to a real project and pin notes on it.
 - Oversigt: KPI tiles (open, overdue, this week) + recent activity, now
   that there's something real to count.
 
+The Oversigt half landed 2026-10-01 as part of a UX pass over the front
+door, the sidebar and Projekter:
+
+- `/` is now stat tiles, three capped "Kræver handling" lists (overskredet,
+  afventer godkendelse, frist inden 7 dage — each linking to the same rows
+  on Registreringer, which gained a `due=week` filter), active projects as
+  rows, and a phone-only "+ Ny registrering" button.
+- Sidebar: overdue count beside Registreringer (`nav_overdue_count`, lazy,
+  in `core.context_processors`), who-is-logged-in footer, and a bottom tab
+  bar below 992px in place of the hamburger. **Rapporter is out of the nav
+  until this phase ships it** — the view and URL still exist.
+- Project cards count overskredet / åbne / afventer instead of drawings and
+  firms; "Fremdrift" became a segmented status bar (approved share of
+  registrations was being read as construction progress, which it isn't);
+  Projekter is grouped by status with afsluttede collapsed.
+
 ### Phase 6 — Production readiness
 
 Prepared for a PythonAnywhere test server on 2026-08-07 (S3, Postgres and
@@ -343,8 +359,10 @@ Kept with their reasoning so they don't get re-litigated.
   `e685bd4` is tagged **`sharepoint-integration`**, so the whole working
   Graph/MSAL implementation is one `git checkout` away if SharePoint
   returns as an optional per-organization integration.
-- **D5 — The name. → Deferred.** Stays `EzConstruct` for now; still a
-  working title, still a one-line change in `settings.BRAND_NAME`.
+- **D5 — The name. → `eConstruct`,** changed from `EzConstruct` on
+  2026-08-07 and matching the `econstruct.eu.pythonanywhere.com` test host.
+  Still a one-line change in `settings.BRAND_NAME` if it moves again — that
+  constant has now absorbed four names without touching a template.
 - **D6 — Multi-tenant. → Yes, and strictly.** This is a SaaS: many
   organizations, each **100% separated** from the others. The tenant model
   is named **`Organization`** (not `Company` — the project cards already

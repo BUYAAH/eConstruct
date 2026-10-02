@@ -1,10 +1,12 @@
 {% comment %}
 The sidebar nav list. Included twice by base.html — once in the fixed
 desktop rail, once inside the mobile offcanvas — so the links live in
-exactly one place. Active state comes from core.context_processors.nav.
+exactly one place. Active state and the overdue count come from
+core.context_processors.nav.
 
 Tegninger has no top-level entry: drawings belong to a project, so they're
-reached through one.
+reached through one. Rapporter is absent until phase 5 ships it — a nav
+entry that lands on "på vej" costs more trust than a missing one.
 {% endcomment %}
 <nav class="nav flex-column gap-1 px-2">
     <a class="app-nav-link {% if nav_section == 'overview' %}active{% endif %}" href="{% url 'core:overview' %}">
@@ -15,9 +17,9 @@ reached through one.
     </a>
     <a class="app-nav-link {% if nav_section == 'registrations' %}active{% endif %}" href="{% url 'core:registrations' %}">
         <svg class="app-icon"><use href="#i-registrations"></use></svg>Registreringer
-    </a>
-    <a class="app-nav-link {% if nav_section == 'reports' %}active{% endif %}" href="{% url 'core:reports' %}">
-        <svg class="app-icon"><use href="#i-reports"></use></svg>Rapporter
+        {% if nav_overdue_count %}
+        <span class="nav-badge ms-auto" title="Overskredne registreringer">{{ nav_overdue_count }}</span>
+        {% endif %}
     </a>
 
     {% if user.is_org_admin %}

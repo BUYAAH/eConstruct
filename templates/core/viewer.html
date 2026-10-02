@@ -16,16 +16,24 @@
 {% endblock %}
 
 {% block content %}
-<div id="viewer-root"
+{% comment %}
+Two halves: the stage (toolbar and drawing) and the side (the list). They
+stack on anything narrower than xxl and sit side by side above it, the list
+sticky, so map and list are on screen together — see .viewer-layout in
+micki.css. viewer.js sizes the canvas to the stage, not the page.
+{% endcomment %}
+<div id="viewer-root" class="viewer-layout"
      data-pdfjs="{% static 'vendor/pdfjs/pdf.min.mjs' %}"
      data-pdfjs-worker="{% static 'vendor/pdfjs/pdf.worker.min.mjs' %}"
      data-pdf-url="{% url 'core:drawing_pdf' drawing.pk %}"
      data-drawing-id="{{ drawing.pk }}"
      data-note-form-url="{% url 'core:registration_new' project.slug %}">
 
+  <div id="viewer-stage">
     {% comment %}
-    Toolbar. Two fixed rows, never more: page navigation and the primary
-    action on top, the faggruppe filter beneath it.
+    Toolbar. Two fixed rows, never more: page navigation on top, the
+    faggruppe filter beneath it. There is no "new registration" button: a
+    registration is created by tapping the drawing where it belongs.
 
     What lives where follows one rule — a control sits next to what it
     changes. Page nav and the chips both act on the drawing below, so they
@@ -44,6 +52,14 @@
                         / <span id="page-count">…</span>
                     </span>
                     <button id="next-page" class="btn btn-sm btn-outline-secondary px-3" disabled>&rarr;</button>
+                    {# Pinch and Ctrl+wheel do the same; these are for the #}
+                    {# hand that isn't free, and for a mouse. viewer.js. #}
+                    <div class="btn-group btn-group-sm ms-1" role="group" aria-label="Zoom">
+                        <button id="zoom-out" class="btn btn-outline-secondary px-2" disabled
+                                aria-label="Zoom ud">&minus;</button>
+                        <button id="zoom-in" class="btn btn-outline-secondary px-2" disabled
+                                aria-label="Zoom ind">+</button>
+                    </div>
                 </div>
 
                 {% comment %}
@@ -68,18 +84,6 @@
                 {% endif %}
 
                 <div class="d-flex align-items-center gap-2 toolbar-actions">
-                {% comment %}
-                Both labels live here rather than in JS: the UI is Danish and
-                hardcoded in templates, and setting .textContent from script
-                would destroy the responsive markup inside the button.
-                {% endcomment %}
-                <button id="add-note-btn" class="btn btn-sm btn-primary px-3">
-                    {# The sign alone below 576px: at that width the noun is #}
-                    {# what pushes the row into wrapping, and + carries it. #}
-                    <span data-add-label="idle">+<span class="d-none d-sm-inline"> Registrering</span></span>
-                    <span data-add-label="active" class="d-none">Annullér</span>
-                </button>
-
                 {% comment %}
                 One menu for everything that doesn't touch the view. Slet
                 tegning is separated by a divider and coloured — a destructive
@@ -118,10 +122,6 @@
                 </div>
                 </div>
             </div>
-
-            <p id="add-note-hint" class="text-center small text-primary d-none mb-0 mt-2">
-                Tryk på tegningen dér, hvor registreringen hører til.
-            </p>
         </div>
     </div>
 
@@ -130,17 +130,47 @@
         Henter tegning…
     </div>
 
-    <div id="page-wrap" class="position-relative mx-auto shadow d-none" style="touch-action: pan-x pan-y pinch-zoom;">
-        <canvas id="pdf-canvas" class="d-block w-100"></canvas>
-        <div id="pin-layer" class="position-absolute top-0 start-0 w-100 h-100"
-             hx-get="{% url 'core:pins' drawing.pk %}"
-             hx-trigger="micki:page-rendered from:body, micki:refresh-pins from:body"
-             hx-vals='js:{page: window.mickiCurrentPage || 1}'
-             hx-swap="innerHTML"></div>
+    {% comment %}
+    The drawing scrolls inside the scroller at any zoom, so the toolbar stays
+    put and a 4x plan never makes the page itself four screens tall. Zoom,
+    pinch and drag-to-pan all live on it — see viewer.js.
+    {% endcomment %}
+    <div id="viewer-scroller" class="viewer-scroller">
+        <div id="page-wrap" class="position-relative mx-auto shadow d-none">
+            <canvas id="pdf-canvas" class="d-block w-100"></canvas>
+            <div id="pin-layer" class="position-absolute top-0 start-0 w-100 h-100"
+                 hx-get="{% url 'core:pins' drawing.pk %}"
+                 hx-trigger="micki:page-rendered from:body, micki:refresh-pins from:body"
+                 hx-vals='js:{page: window.mickiCurrentPage || 1}'
+                 hx-swap="innerHTML"></div>
+        </div>
     </div>
+  </div>
 
-    <div class="card mt-3">
-        <div class="card-header">Registreringer på denne tegning</div>
+  <div id="viewer-side" class="viewer-side">
+    <div class="card">
+        {% comment %}
+        How the drawing is doing at a glance, and a filter in the same
+        breath: each chip is a toggle like the faggruppe chips and hides both
+        rows and pins. Overskredet is its own bucket, not a subset of Åbne —
+        the four never overlap, so the counts add up and switching one off
+        needs no explanation of what it does to the others. Counts are filled
+        in by viewer.js from the rows, which reload after every save, so they
+        cost no request of their own. Counts cover every page of the drawing
+        and ignore the filters; they answer "how is this drawing doing", and a
+        filter must not change the answer.
+        {% endcomment %}
+        <div class="card-header d-flex flex-wrap align-items-center gap-2 py-2">
+            <span class="me-auto">Registreringer</span>
+            <button class="btn btn-sm rounded-pill status-chip active" data-state="overdue">
+                Overskredet <span data-count>0</span></button>
+            <button class="btn btn-sm rounded-pill status-chip active" data-state="open">
+                Åbne <span data-count>0</span></button>
+            <button class="btn btn-sm rounded-pill status-chip active" data-state="resolved">
+                Løste <span data-count>0</span></button>
+            <button class="btn btn-sm rounded-pill status-chip active" data-state="approved">
+                Godkendte <span data-count>0</span></button>
+        </div>
         <div id="notes-list"
              hx-get="{% url 'core:drawing_registrations' drawing.pk %}"
              hx-trigger="load, micki:refresh-pins from:body"
@@ -152,18 +182,22 @@
         chip at the top of the page and nothing on screen would say so.
         {% endcomment %}
         <p id="notes-filtered-empty" class="text-center text-body-secondary small py-4 mb-0 d-none">
-            Ingen registreringer i de valgte faggrupper.
+            Ingen registreringer med de valgte filtre.
         </p>
     </div>
+  </div>
 </div>
 
-<div class="offcanvas offcanvas-bottom" tabindex="-1" id="note-sheet"
-     style="--bs-offcanvas-height: auto; max-height: 85vh;" data-bs-scroll="true">
-    <div class="offcanvas-header pb-1">
-        <h2 class="offcanvas-title h6">Registrering</h2>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Luk"></button>
+<div class="modal fade" tabindex="-1" id="note-sheet" aria-labelledby="note-sheet-title">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header pb-1">
+                <h2 class="modal-title h6" id="note-sheet-title">Registrering</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Luk"></button>
+            </div>
+            <div class="modal-body pt-2" id="note-sheet-body"></div>
+        </div>
     </div>
-    <div class="offcanvas-body pt-2" id="note-sheet-body"></div>
 </div>
 {% endblock %}
 

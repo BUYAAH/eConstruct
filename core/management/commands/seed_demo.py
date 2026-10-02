@@ -90,10 +90,10 @@ class Command(BaseCommand):
 
         users = []
         for email, first, last, is_admin in PEOPLE:
-            user = User.objects.filter(username=email).first()
+            user = User.objects.filter(email=email).first()
             if user is None:
                 user = User.objects.create_user(
-                    username=email, email=email, password=PASSWORD,
+                    email=email, password=PASSWORD,
                     first_name=first, last_name=last,
                     organization=org, is_org_admin=is_admin,
                 )

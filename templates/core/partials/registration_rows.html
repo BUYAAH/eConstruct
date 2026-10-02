@@ -1,21 +1,25 @@
 {% comment %}
-The registration table, shared by the project page, the cross-project list,
-the overview, and the list under the drawing viewer.
+The registration table, shared by the project page, the cross-project list
+and the overview. The drawing viewer has its own, viewer_rows.html.
 
-Pass show_project=True to add a project column. table-responsive so it
-scrolls inside its card on narrow screens rather than pushing the page
-sideways.
+Pass show_project=True to add a project column. Pass compact=True for the
+narrow column beside the drawings on a project: emne, faggruppe and status
+only — the number, firm and deadline are one click away on the row, and a
+passed deadline already shows as the status. table-responsive so it scrolls
+inside its card on narrow screens rather than pushing the page sideways.
 {% endcomment %}
 <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 data-table">
         <thead>
             <tr>
-                <th scope="col">Nr.</th>
+                {% if not compact %}<th scope="col">Nr.</th>{% endif %}
                 <th scope="col">Emne</th>
                 {% if show_project %}<th scope="col">Projekt</th>{% endif %}
                 <th scope="col">Faggruppe</th>
+                {% if not compact %}
                 <th scope="col">Firma</th>
                 <th scope="col">Frist</th>
+                {% endif %}
                 <th scope="col">Status</th>
             </tr>
         </thead>
@@ -24,17 +28,11 @@ sideways.
             {% comment %}
             The subject cell holds the link — that's the keyboard path, and
             the row's data-row-href just widens the click target (rows.js).
-
-            Inside the viewer the row means something else: row_jump swaps the
-            href for data-page, so viewer.js scrolls to the pin's page instead
-            of navigating away from the drawing.
             {% endcomment %}
-            {# data-discipline lets the viewer's chips filter this list with the #}
-            {# same click that filters the pins. Inert on every other page. #}
-            <tr class="reg-row" data-discipline="{{ r.discipline_id }}"
-                {% if row_jump %}data-page="{{ r.page_number }}"
-                {% else %}data-row-href="{% url 'core:registration_detail' r.pk %}"{% endif %}>
+            <tr class="reg-row" data-row-href="{% url 'core:registration_detail' r.pk %}">
+                {% if not compact %}
                 <td class="text-nowrap small text-body-secondary">{{ r.label }}</td>
+                {% endif %}
                 <td>
                     <div class="d-flex align-items-center gap-2">
                         <a class="text-decoration-none text-body"
@@ -67,6 +65,7 @@ sideways.
                         {{ r.discipline.name }}
                     </span>
                 </td>
+                {% if not compact %}
                 <td class="text-nowrap">
                     {{ r.assigned_contractor.name }}
                     {% if r.responsible %}
@@ -82,11 +81,12 @@ sideways.
                     <span class="text-body-secondary">&mdash;</span>
                     {% endif %}
                 </td>
+                {% endif %}
                 <td>{% include "core/partials/status_badge.html" with r=r %}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="{% if show_project %}7{% else %}6{% endif %}"
+                <td colspan="{% if compact %}3{% elif show_project %}7{% else %}6{% endif %}"
                     class="text-center text-body-secondary py-4">
                     Ingen registreringer.
                 </td>

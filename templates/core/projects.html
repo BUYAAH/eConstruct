@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 
 {% comment %}
-The card layout agreed during the mock-up phase, now backed by real rows.
-Stat counts come from annotations in core.views.projects; "Fremdrift" is the
-share of registrations that have been godkendt (Project.progress).
+The card layout agreed during the mock-up phase, now backed by real rows and
+grouped by status: the sites being worked on first, finished ones folded
+away. Groups come from core.views.projects (PROJECT_GROUPS); an empty group
+is simply not rendered.
 {% endcomment %}
 
 {% block title %}Projekter — {{ brand }}{% endblock %}
@@ -12,33 +13,50 @@ share of registrations that have been godkendt (Project.progress).
 {% block content %}
 {% include "core/partials/stat_tiles.html" %}
 
-<div class="d-flex align-items-center mb-3">
-    <h2 class="h6 mb-0 flex-grow-1">Alle projekter</h2>
-    {% if user.is_org_admin %}
-    <a class="btn btn-sm btn-primary flex-shrink-0" href="{% url 'core:project_create' %}">+ Nyt projekt</a>
+{% if has_projects %}
+{% for group in groups %}
+{% if group.projects %}
+<div class="d-flex align-items-center mb-3 {% if not forloop.first %}mt-4{% endif %}">
+    {% if group.status == "done" %}
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+            data-bs-target="#projects-done" aria-expanded="false" aria-controls="projects-done">
+        Vis afsluttede ({{ group.projects|length }})
+    </button>
+    {% else %}
+    <h2 class="h6 mb-0 flex-grow-1">
+        {{ group.label }}
+        <span class="text-body-secondary fw-normal">({{ group.projects|length }})</span>
+    </h2>
+    {% endif %}
+    {% if forloop.first and user.is_org_admin %}
+    <a class="btn btn-sm btn-primary flex-shrink-0 ms-auto" href="{% url 'core:project_create' %}">+ Nyt projekt</a>
     {% endif %}
 </div>
 
+{% if group.status == "done" %}<div class="collapse" id="projects-done">{% endif %}
 <div class="row row-cols-1 row-cols-md-2 row-cols-xxl-3 g-3">
-    {% for p in projects %}
+    {% for p in group.projects %}
     <div class="col">
         {% include "core/partials/project_card.html" %}
     </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center text-body-secondary py-5">
-                {% if user.is_org_admin %}
-                Ingen projekter endnu — opret det første for at komme i gang.
-                <div class="mt-3">
-                    <a class="btn btn-sm btn-primary" href="{% url 'core:project_create' %}">+ Nyt projekt</a>
-                </div>
-                {% else %}
-                Du er ikke tilføjet til nogen projekter endnu — bed din administrator om adgang.
-                {% endif %}
-            </div>
-        </div>
-    </div>
     {% endfor %}
 </div>
+{% if group.status == "done" %}</div>{% endif %}
+{% endif %}
+{% endfor %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-body-secondary py-5">
+        {% if user.is_org_admin %}
+        Ingen projekter endnu — opret det første for at komme i gang.
+        <div class="mt-3">
+            <a class="btn btn-sm btn-primary" href="{% url 'core:project_create' %}">+ Nyt projekt</a>
+        </div>
+        {% else %}
+        Du er ikke tilføjet til nogen projekter endnu — bed din administrator om adgang.
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

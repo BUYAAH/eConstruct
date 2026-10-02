@@ -76,21 +76,28 @@ are inset.
             <div class="card-header d-flex align-items-center gap-2">
                 <span class="flex-grow-1">Firmaer</span>
                 <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle flex-shrink-0">
-                    {{ project.contractors.count }}
+                    {{ contractors|length }}
                 </span>
             </div>
             <ul class="list-group list-group-flush">
                 {% comment %}
-                One line per firm: name left, contact right — the same shape
-                as the label/value rows in the cards beside it. Both truncate,
-                and the contact yields first because the firm name is what
-                you're scanning for.
+                One firm per row: name with the contact beneath, and on the
+                right what it owes on this project — åbne it still has to
+                fix, løst it says is fixed, godkendt signed off. Counts come
+                from core.views.project_detail and are scoped to this project.
                 {% endcomment %}
-                {% for contractor in project.contractors.all %}
+                {% for contractor in contractors %}
                 <li class="list-group-item contractor-row">
-                    <span class="text-truncate">{{ contractor.name }}</span>
-                    <span class="card-meta-muted text-truncate">
-                        {{ contractor.contact_email|default:contractor.contact_name }}
+                    <span class="min-width-0">
+                        <span class="d-block text-truncate">{{ contractor.name }}</span>
+                        <span class="card-meta-muted d-block text-truncate">
+                            {{ contractor.contact_email|default:contractor.contact_name }}
+                        </span>
+                    </span>
+                    <span class="count-pills">
+                        <span class="count count-warning {% if not contractor.open_count %}is-zero{% endif %}">{{ contractor.open_count }} åbne</span>
+                        <span class="count count-info {% if not contractor.resolved_count %}is-zero{% endif %}">{{ contractor.resolved_count }} løst</span>
+                        <span class="count count-success {% if not contractor.approved_count %}is-zero{% endif %}">{{ contractor.approved_count }} godkendt</span>
                     </span>
                 </li>
                 {% empty %}
@@ -144,7 +151,9 @@ are inset.
     </div>
 
     {# --- Drawings ------------------------------------------------------ #}
-    <div class="col-12">
+    {# Drawings and registrations side by side from lg: the drawings get #}
+    {# two thirds, the registrations a compact third (see the partial). #}
+    <div class="col-12 col-lg-8">
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <svg class="app-icon flex-shrink-0"><use href="#i-drawings"></use></svg>
@@ -166,8 +175,6 @@ are inset.
                             <th scope="col">Navn</th>
                             <th scope="col">Sider</th>
                             <th scope="col">Registreringer</th>
-                            <th scope="col">Tilføjet af</th>
-                            <th scope="col">Dato</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -184,12 +191,10 @@ are inset.
                             </td>
                             <td>{{ drawing.page_count }}</td>
                             <td>{{ drawing.registration_count }}</td>
-                            <td class="text-nowrap">{{ drawing.uploaded_by|default:"—" }}</td>
-                            <td class="text-nowrap">{{ drawing.created_at|date:"SHORT_DATE_FORMAT" }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-body-secondary py-4">
+                            <td colspan="3" class="text-center text-body-secondary py-4">
                                 Ingen tegninger endnu.
                             </td>
                         </tr>
@@ -201,7 +206,7 @@ are inset.
     </div>
 
     {# --- Registrations -------------------------------------------------- #}
-    <div class="col-12">
+    <div class="col-12 col-lg-4">
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <svg class="app-icon flex-shrink-0"><use href="#i-registrations"></use></svg>
@@ -216,7 +221,7 @@ are inset.
                 <a class="btn btn-sm btn-primary btn-card-action flex-shrink-0"
                    href="{% url 'core:registration_new' project.slug %}">+ Ny</a>
             </div>
-            {% include "core/partials/registration_rows.html" %}
+            {% include "core/partials/registration_rows.html" with compact=True %}
         </div>
     </div>
 

@@ -6,9 +6,35 @@ from .models import Invitation, User
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("username", "email", "first_name", "last_name", "organization", "is_org_admin", "is_active")
+    """Rebuilt rather than extended, because `UserAdmin`'s own fieldsets name
+    `username`, which no longer exists — inheriting them raises at admin
+    check time. `add_fieldsets` matters most: it is the page that used to let
+    a second account be created on an existing address.
+    """
+
+    list_display = ("email", "first_name", "last_name", "organization", "is_org_admin", "is_active")
     list_filter = ("organization", "is_org_admin", "is_active")
-    fieldsets = UserAdmin.fieldsets + (
+    search_fields = ("email", "first_name", "last_name")
+    ordering = ("email",)
+
+    fieldsets = (
+        (None, {"fields": ("email", "password")}),
+        ("Personal info", {"fields": ("first_name", "last_name")}),
+        ("Organisation", {"fields": ("organization", "is_org_admin")}),
+        (
+            "Permissions",
+            {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
+        ),
+        ("Important dates", {"fields": ("last_login", "date_joined")}),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("email", "usable_password", "password1", "password2"),
+            },
+        ),
         ("Organisation", {"fields": ("organization", "is_org_admin")}),
     )
 

@@ -1,8 +1,8 @@
 {% load l10n %}
 {% comment %}
-The pins for one page. data-discipline drives the chip filter in viewer.js;
-pin-resolved dims what's already been dealt with so open items stand out.
-The pin shows its number, which is what people call it on site.
+The pins for one page. data-discipline and data-state drive the chip filters
+in viewer.js; pin-<state> styles the pin by status (micki.css) so open items
+stand out. The pin shows its number, which is what people call it on site.
 
 `unlocalize` is load-bearing, not tidiness. LANGUAGE_CODE is da-dk, so Django
 formats a Decimal with a comma — `left: 46,733%` — which is not a valid CSS
@@ -12,9 +12,9 @@ coordinate save, and isn't: the stored value is fine and the JS that computed
 it used toFixed(3). Any Decimal written into CSS, JS or a URL needs this.
 {% endcomment %}
 {% for r in registrations %}
-<button class="pin {% if r.status != 'open' %}pin-resolved{% endif %}"
+<button class="pin pin-{{ r.state }}"
         style="left: {{ r.x_pct|unlocalize }}%; top: {{ r.y_pct|unlocalize }}%; --pin-color: {{ r.discipline.color }};"
-        data-discipline="{{ r.discipline_id }}"
+        data-discipline="{{ r.discipline_id }}" data-state="{{ r.state }}"
         hx-get="{% url 'core:registration_detail' r.pk %}"
         hx-target="#note-sheet-body" hx-swap="innerHTML"
         aria-label="{{ r.label }} {{ r.subject|truncatechars:60 }}">{{ r.number }}</button>

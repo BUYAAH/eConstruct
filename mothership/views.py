@@ -113,7 +113,6 @@ def client_create(request):
 
         if data["access"] == ClientCreateForm.PASSWORD:
             User.objects.create_user(
-                username=data["admin_email"],
                 email=data["admin_email"],
                 password=data["password"],
                 first_name=data["admin_first_name"],

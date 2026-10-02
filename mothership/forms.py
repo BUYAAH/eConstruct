@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.utils.text import slugify
 
+from accounts.models import normalize_email
 from core.models import Organization
 
 User = get_user_model()
@@ -103,11 +104,11 @@ class ClientCreateForm(forms.Form):
         return name
 
     def clean_admin_email(self):
-        email = self.cleaned_data["admin_email"].strip().lower()
-        # Username *is* the email and is globally unique, so an address
+        email = normalize_email(self.cleaned_data["admin_email"])
+        # The email *is* the account and is globally unique, so an address
         # belongs to exactly one organization. Checked here so it's a field
         # error at create time rather than an IntegrityError.
-        if User.objects.filter(username=email).exists():
+        if User.objects.filter(email=email).exists():
             raise forms.ValidationError("Der findes allerede en bruger med denne e-mail.")
         return email
 
@@ -122,7 +123,6 @@ class ClientCreateForm(forms.Form):
                 # for nordjyskbyg.dk is caught the same way it would be if
                 # they had chosen it themselves.
                 probe = User(
-                    username=cleaned.get("admin_email", ""),
                     email=cleaned.get("admin_email", ""),
                     first_name=cleaned.get("admin_first_name", ""),
                     last_name=cleaned.get("admin_last_name", ""),

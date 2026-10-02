@@ -44,14 +44,19 @@ def accept_invitation(request, token):
     renders the same dead-end page either way.
     """
     invitation = get_object_or_404(Invitation, token=token)
-    if not invitation.is_usable or not invitation.organization.is_active:
+    # The address is claimed already. Invitation's uniqueness is per
+    # organization, so two organizations can each invite the same person;
+    # whoever accepted second used to hit an IntegrityError and a 500. The
+    # same dead-end page as any other unusable token, for the same reason —
+    # the token is the only credential, so it must not report *why*.
+    taken = User.objects.filter(email=invitation.email).exists()
+    if not invitation.is_usable or not invitation.organization.is_active or taken:
         return render(request, "accounts/invitation_invalid.html", status=410)
 
     if request.method == "POST":
         form = AcceptInvitationForm(request.POST)
         if form.is_valid():
             user = User.objects.create_user(
-                username=invitation.email,
                 email=invitation.email,
                 password=form.cleaned_data["password2"],
                 first_name=form.cleaned_data["first_name"],
