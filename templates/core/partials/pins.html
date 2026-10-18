@@ -13,8 +13,9 @@ it used toFixed(3). Any Decimal written into CSS, JS or a URL needs this.
 {% endcomment %}
 {% for r in registrations %}
 <button class="pin pin-{{ r.state }}"
-        style="left: {{ r.x_pct|unlocalize }}%; top: {{ r.y_pct|unlocalize }}%; --pin-color: {{ r.discipline.color }};"
-        data-discipline="{{ r.discipline_id }}" data-state="{{ r.state }}"
+        style="left: {{ r.x_pct|unlocalize }}%; top: {{ r.y_pct|unlocalize }}%; --pin-color: {{ r.discipline_color }};"
+        data-discipline="{{ r.discipline_id|default_if_none:'' }}" data-state="{{ r.state }}"
+        data-pk="{{ r.pk }}"
         hx-get="{% url 'core:registration_detail' r.pk %}"
         hx-target="#note-sheet-body" hx-swap="innerHTML"
         aria-label="{{ r.label }} {{ r.subject|truncatechars:60 }}">{{ r.number }}</button>

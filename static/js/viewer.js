@@ -357,9 +357,32 @@ notesList.addEventListener("click", (e) => {
     if (!row || !row.dataset.detailUrl) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
-    if (row.dataset.page) goTo(parseInt(row.dataset.page, 10));
+    // Only when the pin is on another page: goTo always re-renders, and a
+    // redraw behind the opening modal looks like a flicker.
+    const page = parseInt(row.dataset.page, 10);
+    if (page && page !== pageNum) goTo(page);
     htmx.ajax("GET", row.dataset.detailUrl, { target: "#note-sheet-body", swap: "innerHTML" });
 });
+
+// --- Hover: a pin and its row light up together ------------------------------
+
+// The row's pin may be on another page, in which case there is nothing to
+// light up; the row still highlights itself through the table's own hover.
+function linkHover(container, selector, counterpartFor) {
+    container.addEventListener("mouseover", (e) => {
+        const el = e.target.closest(selector);
+        if (!el || !container.contains(el)) return;
+        counterpartFor(el)?.classList.add("is-linked");
+    });
+    container.addEventListener("mouseout", (e) => {
+        const el = e.target.closest(selector);
+        if (!el || el.contains(e.relatedTarget)) return;
+        counterpartFor(el)?.classList.remove("is-linked");
+    });
+}
+
+linkHover(pinLayer, ".pin", (pin) => notesList.querySelector(`.reg-row[data-pk="${pin.dataset.pk}"]`));
+linkHover(notesList, ".reg-row", (row) => pinLayer.querySelector(`.pin[data-pk="${row.dataset.pk}"]`));
 
 // --- Load the document --------------------------------------------------------
 

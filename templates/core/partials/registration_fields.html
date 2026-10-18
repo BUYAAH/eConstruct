@@ -2,6 +2,12 @@
 The registration fields themselves, shared by the full page form and the
 bottom-sheet form in the viewer, so the two can't drift apart.
 
+Emne, beskrivelse and firma first; faggruppe, ansvarlig and frist in an
+"Ekstra" box beneath (RegistrationForm.EXTRA) that is closed on a fresh
+form and open when it holds a value or an error. A <details>, not a
+Bootstrap collapse: it needs no JS, so it behaves the same inside the
+viewer's HTMX-loaded sheet and on the full page.
+
 The photo input is only offered when creating: on an existing registration
 photos are managed separately, so several can be added without resubmitting
 the whole form.
@@ -10,7 +16,7 @@ the whole form.
 <div class="alert alert-danger py-2 small">{{ form.non_field_errors|join:" " }}</div>
 {% endif %}
 
-{% for field in form %}
+{% for field in form.main_fields %}
 <div class="mb-3">
     <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
     {{ field }}
@@ -26,3 +32,21 @@ the whole form.
     {{ photo_form.photo }}
 </div>
 {% endif %}
+
+<details class="form-extra mb-3" {% if form.extra_open %}open{% endif %}>
+    <summary>
+        Ekstra
+        <span class="text-body-secondary fw-normal small">— faggruppe, ansvarlig, frist</span>
+    </summary>
+    <div class="pt-3">
+        {% for field in form.extra_fields %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <div class="small text-danger mt-1">{{ field.errors|join:" " }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</details>

@@ -392,6 +392,13 @@ Kept with their reasoning so they don't get re-litigated.
 - **D12 — Registrations are numbered sequentially per project.** #001, #002
   within each project, allocated under a row lock on the project. This is
   how people refer to one on site and in reports.
+- **D18 — Faggruppe is optional on a registration (2026-10-02).** The form
+  needs emne and firma; faggruppe, ansvarlig and frist sit in a folded
+  "Ekstra" box for whoever wants to be thorough. Firma stays required (D11)
+  and stays out of the box, because a required field inside a closed box
+  fails out of sight. A registration with no faggruppe draws grey
+  (`Registration.NO_DISCIPLINE_COLOR`) on pins, rows and PDF exports, and
+  the viewer's faggruppe chips never hide it.
 
 ### Internal console decisions, answered 2026-08-07
 

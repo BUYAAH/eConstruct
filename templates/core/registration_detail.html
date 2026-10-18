@@ -21,7 +21,7 @@
     <div class="col-12 col-lg-8">
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
-                <span class="reg-dot" style="--dot: {{ registration.discipline.color }};"></span>
+                <span class="reg-dot" style="--dot: {{ registration.discipline_color }};"></span>
                 <span class="flex-grow-1 text-truncate">
                     {{ registration.label }} {{ registration.subject }}
                 </span>
@@ -54,7 +54,7 @@
             <div class="card-header">Detaljer</div>
             <dl class="project-meta">
                 <dt>Faggruppe</dt>
-                <dd>{{ registration.discipline.name }}</dd>
+                <dd>{{ registration.discipline.name|default:"—" }}</dd>
                 <dt>Firma</dt>
                 <dd>
                     {{ registration.assigned_contractor.name }}

@@ -1,0 +1,285 @@
+{% load static %}
+<!doctype html>
+{% comment %}
+The public front door at `/`, shown to anyone who is not logged in. Standalone
+like 404.html rather than extending base.html: the app shell is for members,
+and a marketing page wants a navbar, not a sidebar. Everything visual comes
+from micki.css (the `.lp-*` block) plus the app's own tiles, badges and icon
+sprite, so the page and the product look like the same thing.
+{% endcomment %}
+<html lang="da">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ brand }} — registreringer direkte på tegningen</title>
+    <meta name="description" content="{{ brand }} er et værktøj til byggeledelse: registrér fejl og mangler direkte på tegningen, følg dem til godkendelse og send rapporter til underentreprenører.">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{% static 'vendor/fonts/plexsans/plexsans-latin-normal.woff2' %}">
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/micki.css' %}">
+</head>
+<body class="lp">
+
+{% include "partials/_icons.html" %}
+
+<header class="lp-header">
+    <nav class="navbar navbar-expand-md navbar-dark container">
+        <a class="app-brand navbar-brand fw-semibold d-flex align-items-center gap-2" href="/">
+            <span class="brand-dot"></span>{{ brand }}
+        </a>
+        {# Log ind sits outside the collapse so it is reachable on a phone without opening the menu. #}
+        <div class="d-flex align-items-center gap-2 order-md-last">
+            <a class="btn btn-light btn-sm px-3 fw-medium" href="{% url 'accounts:login' %}">Log ind</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#lp-nav" aria-controls="lp-nav" aria-expanded="false"
+                    aria-label="Menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+        <div class="collapse navbar-collapse" id="lp-nav">
+            <ul class="navbar-nav ms-md-4 me-auto">
+                <li class="nav-item"><a class="nav-link" href="#funktioner">Funktioner</a></li>
+                <li class="nav-item"><a class="nav-link" href="#overblik">Overblik</a></li>
+                <li class="nav-item"><a class="nav-link" href="#priser">Priser</a></li>
+                <li class="nav-item"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+            </ul>
+        </div>
+    </nav>
+</header>
+
+<main>
+    <section class="lp-hero">
+        <div class="container py-5">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-6">
+                    <p class="lp-eyebrow">Til byggeledere og tilsyn</p>
+                    <h1 class="lp-h1 mb-3">Fejl og mangler, registreret dér hvor de er.</h1>
+                    <p class="lead lp-lead mb-4">
+                        {{ brand }} lader dig sætte en registrering direkte på tegningen fra
+                        telefonen, med foto, ansvarligt firma og frist, og følge den, til den
+                        er udbedret og godkendt.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-primary btn-lg" href="#kontakt">Kontakt os</a>
+                        <a class="btn btn-outline-primary btn-lg" href="{% url 'accounts:login' %}">Log ind</a>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="lp-hero-figure">
+                        {# Pexels photo 8482551 by Thirdman. Pexels licence: free for commercial use, no attribution required. #}
+                        <img class="lp-hero-img img-fluid" src="{% static 'img/hero.jpg' %}"
+                             width="1600" height="1067"
+                             alt="Byggeleder med hjelm holder en plantegning op mod en betonvæg på en byggeplads">
+                        {# A registration as it looks in the app, floated over the photo. Example data. #}
+                        <div class="lp-reg card shadow" aria-hidden="true">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="lp-reg-no">#014</span>
+                                    <span class="lp-reg-dot" style="background:#DC3545"></span>
+                                    <span class="small text-body-secondary">Konstruktion</span>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-auto">Åben</span>
+                                </div>
+                                <div class="fw-medium">Revne i støbeskel, akse 4</div>
+                                <div class="small text-body-secondary">Jensen Beton A/S · Frist 24. okt.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container py-5" id="funktioner">
+        <p class="lp-eyebrow">Funktioner</p>
+        <h2 class="lp-h2 mb-4">Det hele hænger på tegningen</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3 lp-feature">
+                <span class="icon-square"><svg class="app-icon"><use href="#i-drawings"></use></svg></span>
+                <h3 class="h6 mt-3 mb-1">Nåle på tegningen</h3>
+                <p class="text-body-secondary mb-0">
+                    Upload projektets PDF-tegninger og sæt en nål præcis hvor problemet er.
+                    Nummereret pr. projekt, så alle taler om det samme.
+                </p>
+            </div>
+            <div class="col-md-6 col-lg-3 lp-feature">
+                <span class="icon-square"><svg class="app-icon"><use href="#i-photo"></use></svg></span>
+                <h3 class="h6 mt-3 mb-1">Fotos fra telefonen</h3>
+                <p class="text-body-secondary mb-0">
+                    Tag billedet på stedet og hæng det på registreringen. Bygget til en
+                    telefon i hånden på en byggeplads, ikke til et skrivebord.
+                </p>
+            </div>
+            <div class="col-md-6 col-lg-3 lp-feature">
+                <span class="icon-square"><svg class="app-icon"><use href="#i-check"></use></svg></span>
+                <h3 class="h6 mt-3 mb-1">Åben, løst, godkendt</h3>
+                <p class="text-body-secondary mb-0">
+                    Hver registrering har et firma, der skylder udbedringen, en frist og en
+                    status. Intet er færdigt, før nogen har godkendt det.
+                </p>
+            </div>
+            <div class="col-md-6 col-lg-3 lp-feature">
+                <span class="icon-square"><svg class="app-icon"><use href="#i-reports"></use></svg></span>
+                <h3 class="h6 mt-3 mb-1">Rapporter som PDF</h3>
+                <p class="text-body-secondary mb-0">
+                    Eksportér tegningen med registreringerne stemplet på, klar til at sende
+                    til underentreprenøren eller lægge i sagen.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="lp-band" id="overblik">
+        <div class="container py-5">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-5">
+                    <p class="lp-eyebrow">Overblik</p>
+                    <h2 class="lp-h2 mb-3">Hvad kræver handling i dag?</h2>
+                    <p class="text-body-secondary">
+                        Forsiden i appen viser tre lister: overskredne frister, udbedringer
+                        der afventer godkendelse, og det der forfalder i løbet af ugen.
+                        Hvert projekt har sit eget overblik over tegninger, firmaer og åbne
+                        registreringer.
+                    </p>
+                    <p class="text-body-secondary mb-0">
+                        Hver organisation har sine egne data, brugere og projekter. Brugere
+                        inviteres pr. e-mail og ser kun de projekter, de er med på.
+                    </p>
+                </div>
+                <div class="col-lg-7">
+                    {# The app's own stat tiles and table with example rows. #}
+                    <div class="row g-3">
+                        <div class="col-sm-4">
+                            <div class="stat-tile stat-tile-danger">
+                                <span class="icon-square"><svg class="app-icon"><use href="#i-clock"></use></svg></span>
+                                <span class="stat-body">
+                                    <span class="stat-value">3</span>
+                                    <span class="stat-label">Overskredet</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="stat-tile stat-tile-info">
+                                <span class="icon-square"><svg class="app-icon"><use href="#i-check"></use></svg></span>
+                                <span class="stat-body">
+                                    <span class="stat-value">5</span>
+                                    <span class="stat-label">Afventer godkendelse</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="stat-tile stat-tile-warning">
+                                <span class="icon-square"><svg class="app-icon"><use href="#i-registrations"></use></svg></span>
+                                <span class="stat-body">
+                                    <span class="stat-value">2</span>
+                                    <span class="stat-label">Frist inden 7 dage</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mt-3 table-responsive">
+                        <table class="table table-sm mb-0 lp-table">
+                            <thead class="small text-body-secondary">
+                                <tr><th>Nr.</th><th>Emne</th><th class="d-none d-sm-table-cell">Firma</th><th>Frist</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-body-secondary">#011</td>
+                                    <td>Manglende brandlukning, teknikskakt</td>
+                                    <td class="d-none d-sm-table-cell">Nordisk VVS</td>
+                                    <td>14. okt.</td>
+                                    <td><span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Overskredet</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-body-secondary">#012</td>
+                                    <td>Tavle T2 ikke mærket</td>
+                                    <td class="d-none d-sm-table-cell">El-Service ApS</td>
+                                    <td>20. okt.</td>
+                                    <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Løst</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-body-secondary">#014</td>
+                                    <td>Revne i støbeskel, akse 4</td>
+                                    <td class="d-none d-sm-table-cell">Jensen Beton A/S</td>
+                                    <td>24. okt.</td>
+                                    <td><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Åben</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-body-secondary mt-2 mb-0">Eksempel på et projekts registreringer.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# DRAFT pricing, 2026-10-18. One flat price with no project cap; the #}
+    {# second card is a service tier, so the app never has to enforce a limit. #}
+    <section class="container py-5" id="priser">
+        <p class="lp-eyebrow">Priser</p>
+        <h2 class="lp-h2 mb-2">Én pris. Alle projekter. Alle brugere.</h2>
+        <p class="text-body-secondary mb-4">
+            Pr. organisation, pr. måned, ekskl. moms. Ingen grænse for projekter, brugere eller registreringer.
+        </p>
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card h-100 lp-plan lp-plan-featured">
+                    <div class="card-body p-4">
+                        <h3 class="h6 text-body-secondary">Standard</h3>
+                        <p class="lp-price mb-0">500 kr.</p>
+                        <p class="small text-body-secondary mb-3">pr. måned</p>
+                        <ul class="list-unstyled lp-plan-list mb-4">
+                            <li>Ubegrænset antal projekter og brugere</li>
+                            <li>Tegninger, fotos og PDF-rapporter</li>
+                            <li>Support pr. e-mail og telefon</li>
+                        </ul>
+                        <a class="btn btn-primary w-100" href="#kontakt">Kontakt os</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-5">
+                <div class="card h-100 lp-plan">
+                    <div class="card-body p-4">
+                        <h3 class="h6 text-body-secondary">Stor</h3>
+                        <p class="lp-price mb-0">Aftale</p>
+                        <p class="small text-body-secondary mb-3">efter behov</p>
+                        <ul class="list-unstyled lp-plan-list mb-4">
+                            <li>Alt fra Standard</li>
+                            <li>Hjælp til opsætning og import</li>
+                            <li>Fast kontaktperson</li>
+                        </ul>
+                        <a class="btn btn-outline-primary w-100" href="#kontakt">Kontakt os</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lp-band" id="kontakt">
+        <div class="container py-5">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-7">
+                    <p class="lp-eyebrow">Kontakt</p>
+                    <h2 class="lp-h2 mb-2">Vil du prøve {{ brand }}?</h2>
+                    <p class="text-body-secondary mb-0">
+                        Konti oprettes ved invitation. Skriv til os, så sætter vi din
+                        organisation op og inviterer den første bruger.
+                    </p>
+                </div>
+                <div class="col-lg-5 text-lg-end">
+                    <a class="btn btn-primary btn-lg" href="mailto:{{ contact_email }}">Skriv til os</a>
+                    <div class="small text-body-secondary mt-2">{{ contact_email }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="container py-4 small text-body-secondary d-flex flex-wrap justify-content-between gap-2">
+    <span>© {% now "Y" %} {{ brand }}</span>
+    <a href="{% url 'accounts:login' %}">Log ind</a>
+</footer>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+</body>
+</html>

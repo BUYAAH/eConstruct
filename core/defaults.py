@@ -1,10 +1,10 @@
 """What a brand-new organization starts with.
 
-A registration requires a discipline and a contractor (both non-nullable on
-`Registration`), so an organization created with nothing in it cannot file
-anything until someone works out why. Contractors are genuinely per-customer
-and can't be guessed; disciplines are the same five trades on every Danish
-site, so those get seeded.
+A registration requires a contractor (non-nullable on `Registration`), so
+an organization created with nothing in it cannot file anything until
+someone works out why. Contractors are genuinely per-customer and can't be
+guessed; disciplines are optional on a registration since D18 but are the
+same five trades on every Danish site, so those get seeded.
 
 One list, used by both `mothership` when a client is created and
 `manage.py seed_demo`. Changing what a new client starts with is an edit

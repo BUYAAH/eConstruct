@@ -123,13 +123,21 @@ class DrawingUploadForm(forms.ModelForm):
 
 class RegistrationForm(forms.ModelForm):
     """Everything except the pin location, which comes from the tap on the
-    drawing and is written by the view."""
+    drawing and is written by the view.
+
+    Two halves: what a registration needs (emne, firma) and the "Ekstra" box
+    the template folds away (faggruppe, ansvarlig, frist) for whoever wants
+    to be thorough. Firma stays out of the box on purpose: it is required,
+    and a required field inside a closed box fails out of sight.
+    """
+
+    EXTRA = ("discipline", "responsible", "deadline")
 
     class Meta:
         model = Registration
         fields = [
-            "subject", "description", "discipline",
-            "assigned_contractor", "responsible", "deadline",
+            "subject", "description", "assigned_contractor",
+            "discipline", "responsible", "deadline",
         ]
         labels = {
             "subject": "Emne",
@@ -157,13 +165,27 @@ class RegistrationForm(forms.ModelForm):
         self.project = project
         organization = project.organization
         self.fields["discipline"].queryset = organization.disciplines.all()
+        self.fields["discipline"].required = False
+        self.fields["discipline"].empty_label = "Ingen"
         # Only firms actually attached to this project — assigning work to a
         # contractor who isn't on the site is a data-entry error, not a feature.
         self.fields["assigned_contractor"].queryset = project.contractors.filter(is_active=True)
+        self.fields["assigned_contractor"].empty_label = "Vælg firma"
         self.fields["responsible"].queryset = project.members.filter(is_active=True)
         self.fields["responsible"].required = False
         self.fields["deadline"].required = False
         self.fields["description"].required = False
+
+    def main_fields(self):
+        return [field for field in self if field.name not in self.EXTRA]
+
+    def extra_fields(self):
+        return [self[name] for name in self.EXTRA]
+
+    def extra_open(self):
+        """The Ekstra box starts open when there is something in it to see:
+        a value already set, or an error the submitter has to fix."""
+        return any(field.errors or field.value() for field in self.extra_fields())
 
 
 class PhotoUploadForm(forms.Form):

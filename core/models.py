@@ -273,8 +273,11 @@ class Registration(BaseModel):
     x_pct = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     y_pct = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
 
+    # Optional since 2026-10-02 (D18): a field worker files the observation
+    # first and the office classifies it later, if at all. Still PROTECT —
+    # a faggruppe in use cannot be deleted from under its registrations.
     discipline = models.ForeignKey(
-        Discipline, on_delete=models.PROTECT, related_name="registrations"
+        Discipline, null=True, blank=True, on_delete=models.PROTECT, related_name="registrations"
     )
     subject = models.CharField("emne", max_length=200)
     description = models.TextField("beskrivelse", blank=True)
@@ -308,9 +311,17 @@ class Registration(BaseModel):
     def __str__(self):
         return f"#{self.number:03d} {self.subject}"
 
+    # A pin, a dot or a PDF marker needs a colour whether or not a faggruppe
+    # was chosen. Grey means "none" and is unlike every seeded discipline.
+    NO_DISCIPLINE_COLOR = "#6B7280"
+
     @property
     def label(self):
         return f"#{self.number:03d}"
+
+    @property
+    def discipline_color(self):
+        return self.discipline.color if self.discipline_id else self.NO_DISCIPLINE_COLOR
 
     @property
     def is_open(self):

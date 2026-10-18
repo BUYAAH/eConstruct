@@ -518,6 +518,14 @@ a.stat-tile:focus-visible {
 
 .pin.pin-hidden { display: none; }
 
+/* Hovering the pin's row in the list (viewer.js linkHover): the pin grows
+   and gets an accent ring so it can be found on a busy plan. */
+.pin.is-linked {
+    transform: translate(-50%, -50%) scale(1.3);
+    box-shadow: 0 0 0 3px rgba(var(--app-accent-dk-rgb), .45), 0 2px 8px rgba(0, 0, 0, .5);
+    z-index: 2;
+}
+
 #pin-layer { cursor: crosshair; }
 
 /* The drawing's own scroll box. Bounded to the screen so that zooming in
@@ -1057,6 +1065,50 @@ a.project-card:focus-visible {
     flex-shrink: 0;
 }
 
+/* --- Registration form: the Ekstra box ------------------------------------- */
+
+.form-extra {
+    border: 1px solid var(--app-border);
+    border-radius: .5rem;
+    padding: .6rem .85rem;
+}
+
+.form-extra > summary {
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.form-extra > summary::marker { color: var(--app-muted); }
+
+.form-extra .mb-3:last-child { margin-bottom: 0 !important; }
+
+/* --- Registration modal (viewer) ----------------------------------------- */
+
+/* A deeper shadow than Bootstrap's: the modal sits over a white drawing and
+   a white header on white needs the edge lifted. */
+#note-sheet .modal-content {
+    box-shadow: 0 12px 40px rgba(16, 24, 40, .3), 0 2px 8px rgba(16, 24, 40, .12);
+}
+
+/* First photo at the top of the modal body, bleeding over the body's
+   padding (1rem sides, .5rem top) so it spans the full modal width. Capped
+   so a portrait phone photo leaves room for the text beneath it. */
+.sheet-hero {
+    display: block;
+    width: calc(100% + 2rem);
+    margin: -.5rem -1rem .75rem;
+    max-height: 40vh;
+    object-fit: cover;
+}
+
+/* 10% of the row; the status button takes the rest. Too narrow for a word,
+   hence the icon. */
+.sheet-delete {
+    flex: 0 0 10%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
 /* --- Registration photos ------------------------------------------------ */
 
 .reg-photo {
@@ -1094,6 +1146,13 @@ a.project-card:focus-visible {
 .data-table tr[data-row-href],
 .data-table .reg-row[data-page] {
     cursor: pointer;
+}
+
+/* Hovering the row's pin on the drawing (viewer.js linkHover): the row looks
+   hovered, using the table's own hover variables so the two states match. */
+.data-table .reg-row.is-linked > * {
+    --bs-table-color-state: var(--bs-table-hover-color);
+    --bs-table-bg-state: var(--bs-table-hover-bg);
 }
 
 /* --- Mothership (internal console) -------------------------------------- */
@@ -1252,4 +1311,143 @@ a.project-card:focus-visible {
     font-size: .75rem;
     word-break: break-all;
     color: var(--app-muted);
+}
+
+/* ---- Public index page (templates/core/index.html) ----------------------
+   Same tokens as the app: navy accent, cool greys, Plex Sans. The page
+   borrows .stat-tile, .badge and the icon sprite so it looks like the
+   product it sells. */
+.lp-header {
+    /* One step darker than the rail: on the index it sits above a tinted
+       hero instead of beside a grey canvas. */
+    background: #121A24;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.lp-header .nav-link { color: rgba(255, 255, 255, .85); font-weight: 500; }
+.lp-header .nav-link:hover,
+.lp-header .nav-link:focus { color: #fff; }
+.lp-header .navbar-toggler { border-color: rgba(255, 255, 255, .35); }
+
+/* Section anchors the navbar links jump to. */
+#funktioner, #overblik, #priser, #kontakt { scroll-margin-top: 1rem; }
+
+/* Type: one scale for the page, balanced headings, measured lead. */
+.lp-eyebrow {
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--app-accent-dk);
+    margin-bottom: .5rem;
+}
+
+.lp-h1 {
+    font-size: clamp(2rem, 1.2rem + 3vw, 3rem);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+}
+
+.lp-h2 {
+    font-size: clamp(1.5rem, 1.1rem + 1.5vw, 2rem);
+    font-weight: 600;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+}
+
+.lp-lead { max-width: 34em; }
+
+/* Hero: a navy-tinted ground so the whites in the photo have an edge. It
+   stays tinted all the way down so the seam to the grey canvas below reads
+   as a deliberate change of band, not a fade into the same colour. */
+.lp-hero {
+    background: linear-gradient(180deg, #DCE5F2 0%, #E8EEF6 100%);
+    border-bottom: 1px solid #C9D6E8;
+}
+
+.lp-hero-figure {
+    position: relative;
+    /* Room for the card that hangs off the bottom-left corner. */
+    padding: 0 0 2.5rem 1.5rem;
+}
+
+.lp-hero-img {
+    display: block;
+    border-radius: .75rem;
+    border: 1px solid rgba(var(--app-accent-dk-rgb), .18);
+    box-shadow:
+        0 1px 2px rgba(18, 26, 36, .12),
+        0 12px 28px rgba(18, 26, 36, .18),
+        0 32px 64px rgba(var(--app-accent-dk-rgb), .20);
+}
+
+.lp-reg {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: min(20rem, 85%);
+    border-radius: .75rem;
+}
+
+.lp-reg-no {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--app-accent-dk);
+}
+
+.lp-reg-dot {
+    width: .6rem;
+    height: .6rem;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Feature list: the app's icon square, then heading and copy. */
+.lp-feature .icon-square {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: .7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-primary-bg-subtle);
+    color: var(--app-accent-dk);
+}
+
+.lp-feature .icon-square .app-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Alternating white bands between the canvas-coloured sections. */
+.lp-band {
+    background: #fff;
+    border-top: 1px solid var(--app-border);
+    border-bottom: 1px solid var(--app-border);
+}
+
+.lp-table th { font-weight: 500; }
+.lp-table td, .lp-table th { padding: .5rem .75rem; vertical-align: middle; }
+
+/* Pricing: cards by role. Only the featured plan gets the accent edge. */
+.lp-plan { border-radius: .75rem; }
+.lp-plan-featured { border-color: var(--app-accent-dk); box-shadow: 0 0 0 1px var(--app-accent-dk); }
+
+.lp-price {
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.lp-plan-list li { padding: .25rem 0; }
+.lp-plan-list li + li { border-top: 1px solid var(--app-border); }
+
+@media (max-width: 575.98px) {
+    .lp-hero-figure { padding: 0 0 2rem 0; }
+    .lp-reg { left: .75rem; }
 }

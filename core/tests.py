@@ -19,6 +19,7 @@ from django.urls import reverse
 from django.utils import timezone, translation
 
 from accounts.models import Invitation
+from core.forms import RegistrationForm
 from core.models import (
     Contractor, Discipline, Drawing, Organization, Project, Registration,
     RegistrationPhoto,
@@ -679,6 +680,80 @@ class PhotoTests(MediaTestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class ViewerSheetTests(MediaTestCase):
+    """The registration modal in the viewer. The first photo and the status
+    badge are swapped out-of-band into the modal chrome, so they must be in
+    the response even though the body no longer shows them."""
+
+    def setUp(self):
+        self.a = make_org("alpha")
+        self.client.force_login(self.a["admin"])
+        self.url = reverse("core:registration_detail", args=[self.a["registration"].pk])
+
+    def test_sheet_puts_status_in_header_not_body(self):
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
+        self.assertContains(response, 'id="note-sheet-status" hx-swap-oob="true"', count=1)
+        self.assertContains(response, ">Åben<", count=1)
+        self.assertNotContains(response, ">Åbn<")
+
+    def test_sheet_hero_is_the_first_photo(self):
+        first = RegistrationPhoto.objects.create(
+            registration=self.a["registration"],
+            image=SimpleUploadedFile("a.jpg", _tiny_jpeg()),
+            thumbnail=SimpleUploadedFile("a-t.jpg", _tiny_jpeg()),
+        )
+        second = RegistrationPhoto.objects.create(
+            registration=self.a["registration"],
+            image=SimpleUploadedFile("b.jpg", _tiny_jpeg()),
+            thumbnail=SimpleUploadedFile("b-t.jpg", _tiny_jpeg()),
+        )
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
+        self.assertContains(
+            response,
+            f'<img src="{reverse("core:registration_photo", args=[first.pk, "full"])}" alt="Foto" class="sheet-hero">',
+        )
+        self.assertContains(response, reverse("core:registration_photo", args=[second.pk, "thumb"]))
+
+    def test_status_change_from_sheet_updates_header_badge(self):
+        url = reverse("core:registration_status", args=[self.a["registration"].pk, "resolve"])
+        response = self.client.post(url, HTTP_HX_REQUEST="true", HTTP_X_MICKI_SHEET="true")
+        self.assertContains(response, 'id="note-sheet-status" hx-swap-oob="true"')
+        self.assertContains(response, ">Løst<")
+        # The full detail page keeps its own badge row and sends nothing out-of-band.
+        response = self.client.post(url, HTTP_HX_REQUEST="true")
+        self.assertNotContains(response, "hx-swap-oob")
+        self.assertContains(response, ">Løst<")
+
+
+class ViewerCreateTests(MediaTestCase):
+    """Saving a new registration from the viewer's modal: pinned, with a
+    photo, answered as an HTMX partial that closes the sheet."""
+
+    def setUp(self):
+        self.a = make_org("alpha")
+        self.client.force_login(self.a["member"])
+
+    def test_pinned_registration_with_photo_saves_and_closes_the_sheet(self):
+        url = (
+            reverse("core:registration_new", args=[self.a["project"].slug])
+            + "?x=66.042&y=22.546&page=1&drawing=" + str(self.a["drawing"].pk)
+        )
+        response = self.client.post(
+            url,
+            {
+                "x": "66.042", "y": "22.546", "page": "1", "drawing": self.a["drawing"].pk,
+                "subject": "fra viewer", "assigned_contractor": self.a["contractor"].pk,
+                "photo": SimpleUploadedFile("site.jpg", _tiny_jpeg(), content_type="image/jpeg"),
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("micki:close-sheet", response["HX-Trigger"])
+        registration = Registration.objects.get(subject="fra viewer")
+        self.assertEqual(registration.drawing, self.a["drawing"])
+        self.assertEqual(registration.photos.count(), 1)
+
+
 class InvitationTests(MediaTestCase):
     @classmethod
     def setUpTestData(cls):
@@ -867,6 +942,22 @@ class OverviewTests(MediaTestCase):
         self.assertEqual(groups[Project.DONE], [done])
 
 
+class IndexTests(MediaTestCase):
+    """`/` is the public front door for visitors and Oversigt for members."""
+
+    def test_anonymous_visitor_gets_the_index_with_a_login_link(self):
+        response = self.client.get(reverse("core:overview"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/index.html")
+        self.assertContains(response, reverse("accounts:login"))
+        self.assertContains(response, "mailto:")
+
+    def test_member_still_gets_the_overview(self):
+        self.client.force_login(make_org("alpha")["admin"])
+        response = self.client.get(reverse("core:overview"))
+        self.assertTemplateUsed(response, "core/overview.html")
+
+
 class ProjectSlugTests(MediaTestCase):
     """Slugs are unique per organization, not globally (unique_project_slug_per_org),
     and the detail lookup is scoped to the caller's organization — so two
@@ -927,3 +1018,77 @@ class ContractorCountTests(MediaTestCase):
             (contractor.open_count, contractor.resolved_count, contractor.approved_count),
             (1, 1, 1),
         )
+
+
+class OptionalDisciplineTests(MediaTestCase):
+    """Faggruppe is optional (D18); firma is not (D11). Every page that
+    colours or names a faggruppe has to cope with there being none."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = make_org("alpha")
+        cls.bare = Registration.objects.create(
+            project=cls.a["project"], drawing=cls.a["drawing"], page_number=1,
+            x_pct=50, y_pct=50, subject="uden faggruppe",
+            assigned_contractor=cls.a["contractor"],
+        )
+
+    def setUp(self):
+        self.client.force_login(self.a["admin"])
+
+    def test_discipline_is_optional_but_the_firm_is_not(self):
+        url = reverse("core:registration_new", args=[self.a["project"].slug])
+        response = self.client.post(
+            url, {"subject": "kun firma", "assigned_contractor": self.a["contractor"].pk}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(Registration.objects.get(subject="kun firma").discipline)
+
+        response = self.client.post(url, {"subject": "intet firma"})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Registration.objects.filter(subject="intet firma").exists())
+
+    def test_every_page_renders_without_a_discipline(self):
+        drawing = self.a["drawing"].pk
+        urls = [
+            reverse("core:overview"),
+            reverse("core:registrations"),
+            reverse("core:project_detail", args=[self.a["project"].slug]),
+            reverse("core:registration_detail", args=[self.bare.pk]),
+            reverse("core:registration_edit", args=[self.bare.pk]),
+            reverse("core:viewer", args=[drawing]),
+            reverse("core:pins", args=[drawing]) + "?page=1",
+            reverse("core:drawing_registrations", args=[drawing]) + "?page=1",
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)
+        sheet = self.client.get(
+            reverse("core:registration_detail", args=[self.bare.pk]), HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(sheet.status_code, 200)
+
+    def test_pin_without_a_discipline_is_grey_and_never_filtered(self):
+        response = self.client.get(reverse("core:pins", args=[self.a["drawing"].pk]) + "?page=1")
+        self.assertContains(response, f"--pin-color: {Registration.NO_DISCIPLINE_COLOR}")
+        self.assertContains(response, 'data-discipline=""')
+
+    def test_export_copes_without_a_discipline(self):
+        for mode in ("summary", "inline"):
+            with self.subTest(mode=mode):
+                response = self.client.get(
+                    reverse("core:export_drawing", args=[self.a["drawing"].pk, mode])
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.content.startswith(b"%PDF-"))
+
+    def test_extra_box_is_closed_until_it_holds_something(self):
+        project = self.a["project"]
+        self.assertFalse(RegistrationForm(project).extra_open())
+        self.assertFalse(RegistrationForm(project, instance=self.bare).extra_open())
+        # make_org's registration has a faggruppe, so the box opens on edit.
+        self.assertTrue(RegistrationForm(project, instance=self.a["registration"]).extra_open())
+        # ...and on a submission with an error in the box.
+        bound = RegistrationForm(project, {"subject": "x", "deadline": "ikke en dato"})
+        bound.is_valid()
+        self.assertTrue(bound.extra_open())

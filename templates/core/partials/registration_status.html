@@ -3,7 +3,15 @@
 something løst; only the author or an admin can godkend, so a fix isn't
 signed off by the hand that made it — the view enforces that, this only
 hides the button.
+
+In the viewer's modal (sheet=True) the badge is swapped out-of-band into
+the modal header instead of being shown here.
 {% endcomment %}
+{% if sheet %}
+<span id="note-sheet-status" hx-swap-oob="true">
+    {% include "core/partials/status_badge.html" with r=registration %}
+</span>
+{% else %}
 <div class="d-flex align-items-center gap-2 mb-3">
     {% include "core/partials/status_badge.html" with r=registration %}
     {% if registration.resolved_at %}
@@ -17,6 +25,7 @@ hides the button.
     </span>
     {% endif %}
 </div>
+{% endif %}
 
 <div class="d-grid gap-2">
     {% if registration.status == "open" %}

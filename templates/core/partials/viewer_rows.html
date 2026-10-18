@@ -11,7 +11,8 @@ drawing.
 A click on the row opens the registration in the modal and moves the viewer
 to its page (viewer.js, via data-page and data-detail-url); the subject link
 keeps its href as the keyboard path to the full page. data-discipline and
-data-state are what the chips filter and count on.
+data-state are what the chips filter and count on. data-pk pairs a row with its pin so
+hovering one highlights the other.
 {% endcomment %}
 <table class="table table-hover align-middle mb-0 data-table">
     <thead>
@@ -23,8 +24,8 @@ data-state are what the chips filter and count on.
     </thead>
     <tbody>
         {% for r in registrations %}
-        <tr class="reg-row" data-discipline="{{ r.discipline_id }}" data-state="{{ r.state }}"
-            {% if r.page_number %}data-page="{{ r.page_number }}"{% endif %}
+        <tr class="reg-row" data-discipline="{{ r.discipline_id|default_if_none:'' }}" data-state="{{ r.state }}"
+            data-pk="{{ r.pk }}" {% if r.page_number %}data-page="{{ r.page_number }}"{% endif %}
             data-detail-url="{% url 'core:registration_detail' r.pk %}">
             <td class="text-nowrap small text-body-secondary">{{ r.label }}</td>
             <td>
@@ -38,10 +39,12 @@ data-state are what the chips filter and count on.
                 </div>
                 {# flex, not for layout but for the dot: .reg-dot is a sized span #}
                 {# and only a flex parent gives an inline span its width. #}
+                {% if r.discipline %}
                 <div class="small text-body-secondary reg-sub d-flex align-items-center gap-1">
                     <span class="reg-dot" style="--dot: {{ r.discipline.color }};"></span>
                     {{ r.discipline.name }}
                 </div>
+                {% endif %}
             </td>
             <td class="text-end">{% include "core/partials/status_badge.html" with r=r %}</td>
         </tr>

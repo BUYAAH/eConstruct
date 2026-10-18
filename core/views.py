@@ -4,6 +4,7 @@ import uuid
 from datetime import timedelta
 from functools import wraps
 
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
@@ -110,15 +111,21 @@ def _stat_context(request):
 ACTION_LIST_LIMIT = 5
 
 
-@login_required
 def overview(request):
     """The landing page: what needs doing today, then the active sites.
+
+    `/` is also the public front door: a visitor who is not logged in gets
+    the index page instead of a bounce to the login form, which is why this
+    is not `@login_required`. Everything below the check is for members.
 
     Three short lists, each one step of a byggeleder's daily loop — chase
     what is late, sign off what the firm says is fixed, see what falls due
     next. Each is capped and links to the same rows on Registreringer, so
     the count beside the heading is always the real total.
     """
+    if not request.user.is_authenticated:
+        return render(request, "core/index.html", {"contact_email": django_settings.CONTACT_EMAIL})
+
     today = timezone.localdate()
     active = (
         _projects(request)
@@ -538,6 +545,7 @@ def registration_detail(request, pk):
         "photo_form": PhotoUploadForm(),
     }
     if request.headers.get("HX-Request"):
+        context["sheet"] = True
         return render(request, "core/partials/registration_sheet.html", context)
     return render(request, "core/registration_detail.html", context)
 
@@ -590,10 +598,17 @@ def registration_status(request, pk, action):
         raise Http404
 
     if request.headers.get("HX-Request"):
+        # Set via hx-headers on the viewer modal's status box, so the badge
+        # in the modal header is updated along with the buttons.
+        sheet = request.headers.get("X-Micki-Sheet") == "true"
         return render(
             request,
             "core/partials/registration_status.html",
-            {"registration": registration, "can_edit": _can_edit(request.user, registration)},
+            {
+                "registration": registration,
+                "can_edit": _can_edit(request.user, registration),
+                "sheet": sheet,
+            },
         )
     return redirect("core:registration_detail", pk=registration.pk)
 

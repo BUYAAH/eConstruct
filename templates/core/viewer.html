@@ -192,7 +192,10 @@ micki.css. viewer.js sizes the canvas to the stage, not the page.
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header pb-1">
-                <h2 class="modal-title h6" id="note-sheet-title">Registrering</h2>
+                <h2 class="modal-title h6 d-flex align-items-center gap-2" id="note-sheet-title">
+                    {# The badge is filled out-of-band by the status partial #}
+                    Registrering <span id="note-sheet-status"></span>
+                </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Luk"></button>
             </div>
             <div class="modal-body pt-2" id="note-sheet-body"></div>

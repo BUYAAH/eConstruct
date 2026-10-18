@@ -2,6 +2,8 @@
 The same fields inside the viewer's bottom sheet. The hidden inputs carry
 the tapped pin location, which the view writes onto the registration.
 {% endcomment %}
+{# Clear the status badge the previous registration left in the modal header #}
+<span id="note-sheet-status" hx-swap-oob="true"></span>
 <form hx-post="{{ action }}" hx-target="#note-sheet-body" hx-swap="innerHTML"
       hx-encoding="multipart/form-data">
     <input type="hidden" name="drawing" value="{{ request.GET.drawing }}">

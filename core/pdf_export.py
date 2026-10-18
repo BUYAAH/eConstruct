@@ -33,7 +33,8 @@ def _hex_to_rgb(color):
 
 def _meta_line(reg):
     author = str(reg.author) if reg.author else "Ukendt"
-    return f"{reg.discipline.name} — {reg.assigned_contractor.name} — {author}"
+    discipline = reg.discipline.name if reg.discipline_id else "Ingen faggruppe"
+    return f"{discipline} — {reg.assigned_contractor.name} — {author}"
 
 
 def _body_text(reg):
@@ -125,7 +126,7 @@ def _summary_pages(document_name, registrations):
         if y - needed < 50:
             c.showPage()
             y = height - 60
-        c.setFillColorRGB(*_hex_to_rgb(reg.discipline.color))
+        c.setFillColorRGB(*_hex_to_rgb(reg.discipline_color))
         c.circle(58, y + 3, 4, stroke=0, fill=1)
         c.setFont("Helvetica-Bold", 9)
         c.setFillColorRGB(0, 0, 0)
@@ -168,7 +169,7 @@ def stamp_registrations(pdf_bytes, registrations, mode="summary", document_name=
         def draw(c, page_regs=page_regs, width=width, height=height):
             for reg in page_regs:
                 x, y = _pin_xy(reg, width, height)
-                rgb = _hex_to_rgb(reg.discipline.color)
+                rgb = _hex_to_rgb(reg.discipline_color)
                 if mode == "inline":
                     _draw_inline_box(c, x, y, reg, rgb, width, height)
                 else:
@@ -193,7 +194,7 @@ def stamp_registrations(pdf_bytes, registrations, mode="summary", document_name=
                 )
                 annotation[NameObject("/T")] = TextStringObject(f"{reg.label} {_meta_line(reg)}")
                 annotation[NameObject("/C")] = ArrayObject(
-                    FloatObject(c) for c in _hex_to_rgb(reg.discipline.color)
+                    FloatObject(c) for c in _hex_to_rgb(reg.discipline_color)
                 )
                 writer.add_annotation(page_number=page_index, annotation=annotation)
 

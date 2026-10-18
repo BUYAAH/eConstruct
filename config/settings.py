@@ -158,6 +158,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # {{ brand }} via core.context_processors.brand. Internal identifiers (repo,
 # CSS classes, `micki:*` JS events) are NOT branded and never change.
 BRAND_NAME = "eConstruct"
+# "Kontakt os" on the public index page. Placeholder until there is a real
+# address: accounts are invite-only (ROADMAP D1), so this is the only way in.
+CONTACT_EMAIL = "kontakt@example.com"
 
 AUTH_USER_MODEL = "accounts.User"
 

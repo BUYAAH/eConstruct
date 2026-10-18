@@ -1,16 +1,22 @@
 {% comment %}
-Tapping a pin in the viewer loads this into the bottom sheet — a compact
-read-only summary with the status control, and a link out to the full page
-for anything more.
+Tapping a pin in the viewer loads this into the modal body. The first photo
+sits full-width at the top of the body; the status badge is swapped
+out-of-band into the modal header (#note-sheet-status) by the status
+partial, so it is also refreshed after a status change.
 {% endcomment %}
+{% with photos=registration.photos.all %}
+{% if photos %}
+<a href="{% url 'core:registration_photo' photos.0.pk 'full' %}" target="_blank" rel="noopener">
+    <img src="{% url 'core:registration_photo' photos.0.pk 'full' %}" alt="Foto" class="sheet-hero">
+</a>
+{% endif %}
 <div class="d-flex align-items-center gap-2 mb-2">
-    <span class="reg-dot" style="--dot: {{ registration.discipline.color }};"></span>
-    <span class="fw-semibold flex-grow-1">{{ registration.label }} {{ registration.subject }}</span>
-    {% include "core/partials/status_badge.html" with r=registration %}
+    <span class="reg-dot" style="--dot: {{ registration.discipline_color }};"></span>
+    <span class="fw-semibold">{{ registration.label }} {{ registration.subject }}</span>
 </div>
 
 <div class="small text-body-secondary mb-2">
-    {{ registration.discipline.name }} · {{ registration.assigned_contractor.name }}
+    {% if registration.discipline %}{{ registration.discipline.name }} · {% endif %}{{ registration.assigned_contractor.name }}
     {% if registration.deadline %}
     · frist <span {% if registration.overdue %}class="text-danger fw-medium"{% endif %}>
         {{ registration.deadline|date:"j. b Y" }}</span>
@@ -21,9 +27,9 @@ for anything more.
 <p class="mb-2" style="white-space: pre-wrap;">{{ registration.description }}</p>
 {% endif %}
 
-{% if registration.photos.all %}
+{% if photos|length > 1 %}
 <div class="d-flex flex-wrap gap-2 mb-3">
-    {% for photo in registration.photos.all %}
+    {% for photo in photos|slice:"1:" %}
     <a href="{% url 'core:registration_photo' photo.pk 'full' %}" target="_blank" rel="noopener">
         <img src="{% url 'core:registration_photo' photo.pk 'thumb' %}" alt="Foto"
              class="rounded" style="width: 72px; height: 72px; object-fit: cover;" loading="lazy">
@@ -32,17 +38,18 @@ for anything more.
 </div>
 {% endif %}
 
-<div id="registration-status" class="mb-3">
-    {% include "core/partials/registration_status.html" %}
-</div>
-
-<div class="d-flex gap-2">
-    <a class="btn btn-sm btn-outline-secondary flex-fill"
-       href="{% url 'core:registration_detail' registration.pk %}">Åbn</a>
+<div class="d-flex align-items-start gap-2">
     {% if can_edit %}
-    <button class="btn btn-sm btn-outline-danger flex-fill"
+    <button class="btn btn-sm btn-outline-danger sheet-delete"
             hx-post="{% url 'core:registration_delete' registration.pk %}"
             hx-target="#note-sheet-body" hx-swap="innerHTML"
-            hx-confirm="Slet {{ registration.label }}?">Slet</button>
+            hx-confirm="Slet {{ registration.label }}?" aria-label="Slet">
+        <svg class="app-icon"><use href="#i-trash"></use></svg>
+    </button>
     {% endif %}
+    {# The header is inherited by the status buttons, so their responses come back in sheet form #}
+    <div id="registration-status" class="flex-grow-1" hx-headers='{"X-Micki-Sheet": "true"}'>
+        {% include "core/partials/registration_status.html" with sheet=True %}
+    </div>
 </div>
+{% endwith %}

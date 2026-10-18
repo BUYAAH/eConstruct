@@ -57,6 +57,7 @@ inside its card on narrow screens rather than pushing the page sideways.
                 and next to the name it explains itself.
                 {% endcomment %}
                 <td>
+                    {% if r.discipline %}
                     {# --dot goes on the pill, not the swatch: it inherits down #}
                     {# to .reg-dot and lets the pill tint itself from the same #}
                     {# value. Custom properties only inherit downward. #}
@@ -64,6 +65,9 @@ inside its card on narrow screens rather than pushing the page sideways.
                         <span class="reg-dot"></span>
                         {{ r.discipline.name }}
                     </span>
+                    {% else %}
+                    <span class="text-body-secondary">&mdash;</span>
+                    {% endif %}
                 </td>
                 {% if not compact %}
                 <td class="text-nowrap">
