@@ -1,13 +1,14 @@
 {% comment %}
-Thumbnails link to the full rendition. Both are generated at upload and
-served only through an access-checked view — nothing under MEDIA_ROOT is
-web-reachable.
+Every photo at full width, stacked: this is the page where a photo is
+actually looked at, usually on a phone, so a 96px thumbnail only added a
+tap. Both renditions are generated at upload and served only through an
+access-checked view — nothing under MEDIA_ROOT is web-reachable.
 {% endcomment %}
-<div class="d-flex flex-wrap gap-2 mb-3">
+<div class="d-flex flex-column gap-3">
     {% for photo in registration.photos.all %}
     <figure class="reg-photo mb-0">
         <a href="{% url 'core:registration_photo' photo.pk 'full' %}" target="_blank" rel="noopener">
-            <img src="{% url 'core:registration_photo' photo.pk 'thumb' %}" alt="Foto"
+            <img src="{% url 'core:registration_photo' photo.pk 'full' %}" alt="Foto"
                  class="rounded" loading="lazy">
         </a>
         {% if can_edit %}
@@ -21,11 +22,3 @@ web-reachable.
     <p class="text-body-secondary small mb-0">Ingen fotos endnu.</p>
     {% endfor %}
 </div>
-
-<form hx-post="{% url 'core:registration_photo_add' registration.pk %}"
-      hx-target="#registration-photos" hx-swap="innerHTML"
-      hx-encoding="multipart/form-data"
-      class="d-flex gap-2 align-items-start">
-    {{ photo_form.photo }}
-    <button class="btn btn-sm btn-outline-secondary flex-shrink-0">Tilføj</button>
-</form>

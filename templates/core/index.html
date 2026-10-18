@@ -19,7 +19,7 @@ sprite, so the page and the product look like the same thing.
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/micki.css' %}">
 </head>
-<body class="lp">
+<body class="lp" data-bs-spy="scroll" data-bs-target="#lp-nav" data-bs-root-margin="-72px 0px -60%">
 
 {% include "partials/_icons.html" %}
 
@@ -66,25 +66,10 @@ sprite, so the page and the product look like the same thing.
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <div class="lp-hero-figure">
-                        {# Pexels photo 8482551 by Thirdman. Pexels licence: free for commercial use, no attribution required. #}
-                        <img class="lp-hero-img img-fluid" src="{% static 'img/hero.jpg' %}"
-                             width="1600" height="1067"
-                             alt="Byggeleder med hjelm holder en plantegning op mod en betonvæg på en byggeplads">
-                        {# A registration as it looks in the app, floated over the photo. Example data. #}
-                        <div class="lp-reg card shadow" aria-hidden="true">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="lp-reg-no">#014</span>
-                                    <span class="lp-reg-dot" style="background:#DC3545"></span>
-                                    <span class="small text-body-secondary">Konstruktion</span>
-                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-auto">Åben</span>
-                                </div>
-                                <div class="fw-medium">Revne i støbeskel, akse 4</div>
-                                <div class="small text-body-secondary">Jensen Beton A/S · Frist 24. okt.</div>
-                            </div>
-                        </div>
-                    </div>
+                    {# Pexels photo 8482551 by Thirdman. Pexels licence: free for commercial use, no attribution required. #}
+                    <img class="lp-hero-img img-fluid" src="{% static 'img/hero.jpg' %}"
+                         width="1600" height="1067"
+                         alt="Byggeleder med hjelm holder en plantegning op mod en betonvæg på en byggeplads">
                 </div>
             </div>
         </div>
@@ -213,46 +198,58 @@ sprite, so the page and the product look like the same thing.
         </div>
     </section>
 
-    {# DRAFT pricing, 2026-10-18. One flat price with no project cap; the #}
-    {# second card is a service tier, so the app never has to enforce a limit. #}
+    {# Launch pricing, 2026-10-18 (D19): one plan at 699 kr., 500 GB included, #}
+    {# founding price 499 kr. for the first 10 customers, for as long as they  #}
+    {# stay.                                                                   #}
+    {# The 500 GB is advertised only; nothing in the app measures storage yet.  #}
     <section class="container py-5" id="priser">
         <p class="lp-eyebrow">Priser</p>
-        <h2 class="lp-h2 mb-2">Én pris. Alle projekter. Alle brugere.</h2>
+        <h2 class="lp-h2 mb-2">Én plan. Alle projekter. Alle brugere.</h2>
         <p class="text-body-secondary mb-4">
-            Pr. organisation, pr. måned, ekskl. moms. Ingen grænse for projekter, brugere eller registreringer.
+            Pr. organisation, pr. måned, ekskl. moms. Ingen funktioner bag en dyrere plan.
         </p>
         <div class="row g-4 justify-content-center">
             <div class="col-md-6 col-lg-5">
-                <div class="card h-100 lp-plan lp-plan-featured">
-                    <div class="card-body p-4">
-                        <h3 class="h6 text-body-secondary">Standard</h3>
-                        <p class="lp-price mb-0">500 kr.</p>
-                        <p class="small text-body-secondary mb-3">pr. måned</p>
-                        <ul class="list-unstyled lp-plan-list mb-4">
-                            <li>Ubegrænset antal projekter og brugere</li>
-                            <li>Tegninger, fotos og PDF-rapporter</li>
-                            <li>Support pr. e-mail og telefon</li>
-                        </ul>
-                        <a class="btn btn-primary w-100" href="#kontakt">Kontakt os</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-5">
                 <div class="card h-100 lp-plan">
                     <div class="card-body p-4">
-                        <h3 class="h6 text-body-secondary">Stor</h3>
-                        <p class="lp-price mb-0">Aftale</p>
-                        <p class="small text-body-secondary mb-3">efter behov</p>
+                        <h3 class="h6 text-body-secondary">Standard</h3>
+                        <p class="lp-price mb-0">699 kr.</p>
+                        <p class="small text-body-secondary mb-3">pr. måned</p>
                         <ul class="list-unstyled lp-plan-list mb-4">
-                            <li>Alt fra Standard</li>
-                            <li>Hjælp til opsætning og import</li>
-                            <li>Fast kontaktperson</li>
+                            <li>Ubegrænset antal brugere</li>
+                            <li>Ubegrænset antal projekter</li>
+                            <li>500 GB lagerplads til fotos</li>
+                            <li>Originalfotos i fuld opløsning</li>
+                            <li>Adgang til afsluttede projekter</li>
+                            <li>Tegninger, PDF-rapporter og support</li>
                         </ul>
                         <a class="btn btn-outline-primary w-100" href="#kontakt">Kontakt os</a>
                     </div>
                 </div>
             </div>
+            <div class="col-md-6 col-lg-5">
+                <div class="card h-100 lp-plan lp-plan-featured">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="h6 text-body-secondary mb-0">De første 10 kunder</h3>
+                            <span class="badge text-bg-primary">Begrænset</span>
+                        </div>
+                        <p class="lp-price mb-0 mt-2">499 kr.</p>
+                        <p class="small text-body-secondary mb-3">pr. måned – for altid</p>
+                        <ul class="list-unstyled lp-plan-list mb-4">
+                            <li>Alt fra Standard</li>
+                            <li>Prisen stiger aldrig, så længe I er kunde</li>
+                            <li>Til gengæld: ærlig feedback undervejs</li>
+                            <li>Direkte linje til os, der bygger det</li>
+                        </ul>
+                        <a class="btn btn-primary w-100" href="#kontakt">Vær med fra starten</a>
+                    </div>
+                </div>
+            </div>
         </div>
+        <p class="text-center text-body-secondary small mt-4 mb-0">
+            Større virksomhed? Ekstra lagerplads eller en aftale efter behov.
+        </p>
     </section>
 
     <section class="lp-band" id="kontakt">
@@ -281,5 +278,14 @@ sprite, so the page and the product look like the same thing.
 </footer>
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script>
+    // Frost the header once the hero has scrolled under it.
+    (function () {
+        var header = document.querySelector(".lp-header");
+        function update() { header.classList.toggle("is-scrolled", window.scrollY > 8); }
+        window.addEventListener("scroll", update, { passive: true });
+        update();
+    })();
+</script>
 </body>
 </html>

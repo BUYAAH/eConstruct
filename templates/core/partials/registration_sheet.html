@@ -48,7 +48,7 @@ partial, so it is also refreshed after a status change.
     </button>
     {% endif %}
     {# The header is inherited by the status buttons, so their responses come back in sheet form #}
-    <div id="registration-status" class="flex-grow-1" hx-headers='{"X-Micki-Sheet": "true"}'>
+    <div id="registration-status" class="flex-grow-1 d-grid gap-2" hx-headers='{"X-Micki-Sheet": "true"}'>
         {% include "core/partials/registration_status.html" with sheet=True %}
     </div>
 </div>

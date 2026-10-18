@@ -719,10 +719,18 @@ class ViewerSheetTests(MediaTestCase):
         response = self.client.post(url, HTTP_HX_REQUEST="true", HTTP_X_MICKI_SHEET="true")
         self.assertContains(response, 'id="note-sheet-status" hx-swap-oob="true"')
         self.assertContains(response, ">Løst<")
-        # The full detail page keeps its own badge row and sends nothing out-of-band.
+        # The detail page's badge is in its card header, so it is swapped there.
         response = self.client.post(url, HTTP_HX_REQUEST="true")
-        self.assertNotContains(response, "hx-swap-oob")
+        self.assertContains(response, 'id="registration-badge" hx-swap-oob="true"', count=1)
+        self.assertNotContains(response, "note-sheet-status")
         self.assertContains(response, ">Løst<")
+
+    def test_detail_page_shows_the_badge_once_and_the_buttons_in_the_footer(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, ">Åben<", count=1)
+        self.assertNotContains(response, "hx-swap-oob")
+        content = response.content.decode()
+        self.assertLess(content.index(">Slet<"), content.index("Markér som løst"))
 
 
 class ViewerCreateTests(MediaTestCase):

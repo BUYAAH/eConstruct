@@ -399,6 +399,24 @@ Kept with their reasoning so they don't get re-litigated.
   fails out of sight. A registration with no faggruppe draws grey
   (`Registration.NO_DISCIPLINE_COLOR`) on pins, rows and PDF exports, and
   the viewer's faggruppe chips never hide it.
+- **D19 — Pricing → one plan, no project cap, storage as the safety valve
+  (2026-10-18).** 699 kr./month per organization, unlimited users and
+  projects, 500 GB of photo storage included, every feature on the one
+  plan. The first 10 customers get 499 kr./month for as long as they stay,
+  in exchange for feedback — a permanent founding price, not a first-year
+  discount, so there is no later price to state. Prices are shown in DKK
+  only. Larger firms get extra storage or an agreement by need, not a
+  higher tier. Reasoning: marginal cost per
+  project is near zero (`storage_plan.md`), so tiers would be
+  segmentation without customers to segment; a project cap would teach
+  customers to mark live sites Afsluttet to free a slot, corrupting the
+  counts they pay for; and tiers need plan state, enforcement and
+  Mothership controls, none of which exist. The 500 GB is advertised
+  only — nothing measures per-organization storage yet, so the planned
+  warning at 400 GB and a usage figure on the Mothership client page are
+  open work. The 699 kr. is a hypothesis to validate in demos, not a measured
+  willingness to pay; revisit tiers only once 10–30 real customers show
+  what actually varies.
 
 ### Internal console decisions, answered 2026-08-07
 

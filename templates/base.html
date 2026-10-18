@@ -100,7 +100,7 @@
     </header>
     {% endif %}
 
-    <main class="{% block container_class %}app-container container-fluid px-3 px-md-4 py-3 py-md-4{% endblock %}">
+    <main class="{% block container_class %}container-fluid px-3 px-md-4 py-3 py-md-4{% endblock %}">
         {% if messages %}
             {% for message in messages %}
             <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">

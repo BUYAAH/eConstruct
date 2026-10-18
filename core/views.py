@@ -542,7 +542,6 @@ def registration_detail(request, pk):
     context = {
         "registration": registration,
         "can_edit": _can_edit(request.user, registration),
-        "photo_form": PhotoUploadForm(),
     }
     if request.headers.get("HX-Request"):
         context["sheet"] = True
@@ -598,8 +597,9 @@ def registration_status(request, pk, action):
         raise Http404
 
     if request.headers.get("HX-Request"):
-        # Set via hx-headers on the viewer modal's status box, so the badge
-        # in the modal header is updated along with the buttons.
+        # The badge sits outside the swapped box on both pages, so it goes
+        # out-of-band: to the modal header when the viewer's status box says
+        # so via hx-headers, otherwise to the detail page's card header.
         sheet = request.headers.get("X-Micki-Sheet") == "true"
         return render(
             request,
@@ -608,6 +608,7 @@ def registration_status(request, pk, action):
                 "registration": registration,
                 "can_edit": _can_edit(request.user, registration),
                 "sheet": sheet,
+                "oob": True,
             },
         )
     return redirect("core:registration_detail", pk=registration.pk)
@@ -646,8 +647,7 @@ def registration_photo_add(request, pk):
     return render(
         request,
         "core/partials/registration_photos.html",
-        {"registration": registration, "photo_form": PhotoUploadForm(),
-         "can_edit": _can_edit(request.user, registration)},
+        {"registration": registration, "can_edit": _can_edit(request.user, registration)},
     )
 
 
@@ -666,8 +666,7 @@ def registration_photo_delete(request, pk):
     return render(
         request,
         "core/partials/registration_photos.html",
-        {"registration": registration, "photo_form": PhotoUploadForm(),
-         "can_edit": _can_edit(request.user, registration)},
+        {"registration": registration, "can_edit": _can_edit(request.user, registration)},
     )
 
 

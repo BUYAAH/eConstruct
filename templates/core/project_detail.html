@@ -12,12 +12,6 @@
 </nav>
 {% endblock %}
 
-{% comment %}
-Full-bleed: drops the 1200px cap, keeps a modest gutter. mx-0 on the row
-kills the negative margins that would otherwise overflow horizontally.
-{% endcomment %}
-{% block container_class %}container-fluid px-2 px-md-3 py-3 py-md-4{% endblock %}
-
 {% block content %}
 {% comment %}
 One row throughout: the three info cards are col-md-4, the two working cards
@@ -25,7 +19,7 @@ below are col-12. Keeping them in the same row means every card lines up on
 the same gutters instead of the sections sitting flush while the header cards
 are inset.
 {% endcomment %}
-<div class="row g-3 mx-0 project-grid">
+<div class="row g-3 project-grid">
 
     {# --- Identity ---------------------------------------------------- #}
     <div class="col-12 col-md-4">

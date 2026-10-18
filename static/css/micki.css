@@ -152,10 +152,6 @@ body {
     }
 }
 
-.app-container {
-    max-width: 1200px;
-}
-
 .app-brand {
     color: #fff;
     font-size: 1.15rem;
@@ -1116,18 +1112,16 @@ a.project-card:focus-visible {
 }
 
 .reg-photo img {
-    width: 96px;
-    height: 96px;
-    object-fit: cover;
+    width: 100%;
+    height: auto;
     display: block;
 }
 
-/* Sits on the corner of the thumbnail rather than below it, so a row of
-   photos stays a row of photos. */
+/* Sits in the corner of the photo rather than below it. */
 .reg-photo-delete {
     position: absolute;
-    top: -.4rem;
-    right: -.4rem;
+    top: .5rem;
+    right: .5rem;
     border-radius: 50%;
     width: 1.5rem;
     height: 1.5rem;
@@ -1319,18 +1313,73 @@ a.project-card:focus-visible {
    product it sells. */
 .lp-header {
     /* One step darker than the rail: on the index it sits above a tinted
-       hero instead of beside a grey canvas. */
+       hero instead of beside a grey canvas. Sticky, so Log ind and the
+       section links stay within reach down the whole page. */
+    position: sticky;
+    top: 0;
+    z-index: 1030;
     background: #121A24;
     border-bottom: 1px solid rgba(255, 255, 255, .08);
+    transition: background-color .25s ease, box-shadow .25s ease,
+                -webkit-backdrop-filter .25s ease, backdrop-filter .25s ease;
 }
 
-.lp-header .nav-link { color: rgba(255, 255, 255, .85); font-weight: 500; }
+.lp { --lp-header-h: 56px; }
+.lp-header .navbar { min-height: var(--lp-header-h); }
+
+/* Once the page has scrolled the bar goes to frosted glass: the hero and
+   the bands show through a dark tint, so it reads as floating above the
+   content rather than as a slab cut off the top. The solid colour stays
+   where blur is unsupported, so the links are legible either way. */
+.lp-header.is-scrolled {
+    background: rgba(18, 26, 36, .96);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .06), 0 8px 24px rgba(18, 26, 36, .18);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .lp-header.is-scrolled {
+        background: rgba(18, 26, 36, .72);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+    }
+}
+
+/* Back to solid while the pointer (or keyboard focus) is on the bar. */
+.lp-header.is-scrolled:hover,
+.lp-header.is-scrolled:focus-within {
+    background: #121A24;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.lp-header .nav-link { color: rgba(255, 255, 255, .7); font-weight: 500; }
 .lp-header .nav-link:hover,
-.lp-header .nav-link:focus { color: #fff; }
+.lp-header .nav-link:focus,
+.lp-header .nav-link.active { color: #fff; }
+
+/* ScrollSpy marks the section in view; a short accent rule under the link
+   on wide screens, where the links sit in a row. */
+@media (min-width: 768px) {
+    .lp-header .nav-link { position: relative; }
+    .lp-header .nav-link::after {
+        content: "";
+        position: absolute;
+        left: .5rem;
+        right: .5rem;
+        bottom: .25rem;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--app-accent);
+        transform: scaleX(0);
+        transition: transform .2s ease;
+    }
+    .lp-header .nav-link.active::after { transform: scaleX(1); }
+}
+
 .lp-header .navbar-toggler { border-color: rgba(255, 255, 255, .35); }
 
-/* Section anchors the navbar links jump to. */
-#funktioner, #overblik, #priser, #kontakt { scroll-margin-top: 1rem; }
+/* Section anchors the navbar links jump to, offset for the sticky bar. */
+#funktioner, #overblik, #priser, #kontakt { scroll-margin-top: calc(var(--lp-header-h) + 1rem); }
 
 /* Type: one scale for the page, balanced headings, measured lead. */
 .lp-eyebrow {
@@ -1367,12 +1416,6 @@ a.project-card:focus-visible {
     border-bottom: 1px solid #C9D6E8;
 }
 
-.lp-hero-figure {
-    position: relative;
-    /* Room for the card that hangs off the bottom-left corner. */
-    padding: 0 0 2.5rem 1.5rem;
-}
-
 .lp-hero-img {
     display: block;
     border-radius: .75rem;
@@ -1381,28 +1424,6 @@ a.project-card:focus-visible {
         0 1px 2px rgba(18, 26, 36, .12),
         0 12px 28px rgba(18, 26, 36, .18),
         0 32px 64px rgba(var(--app-accent-dk-rgb), .20);
-}
-
-.lp-reg {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: min(20rem, 85%);
-    border-radius: .75rem;
-}
-
-.lp-reg-no {
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--app-accent-dk);
-}
-
-.lp-reg-dot {
-    width: .6rem;
-    height: .6rem;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
 }
 
 /* Feature list: the app's icon square, then heading and copy. */
@@ -1446,8 +1467,3 @@ a.project-card:focus-visible {
 
 .lp-plan-list li { padding: .25rem 0; }
 .lp-plan-list li + li { border-top: 1px solid var(--app-border); }
-
-@media (max-width: 575.98px) {
-    .lp-hero-figure { padding: 0 0 2rem 0; }
-    .lp-reg { left: .75rem; }
-}
